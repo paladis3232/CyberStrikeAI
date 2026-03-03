@@ -444,7 +444,7 @@ Skills Library:
 		skillsHint.WriteString("\n\nRecommended Skills for this role:\n")
 		for i, skillName := range roleSkills {
 			if i > 0 {
-				skillsHint.WriteString("、")
+				skillsHint.WriteString(", ")
 			}
 			skillsHint.WriteString("`")
 			skillsHint.WriteString(skillName)
