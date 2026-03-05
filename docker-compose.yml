@@ -1,0 +1,13 @@
+services:
+  cyberstrikeai:
+    container_name: cyberstrikeai
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:8080:8080"
+      - "0.0.0.0:8081:8081"
+    volumes:
+      - ./data:/app/data
+      - ./tmp:/app/tmp

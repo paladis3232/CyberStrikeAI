@@ -1,0 +1,94 @@
+# Docker runtime configuration for CyberStrikeAI
+
+version: "v1.4.0"
+
+server:
+  host: 0.0.0.0
+  port: 8080
+
+auth:
+  password: "ChangeMe_123!"
+  session_duration_hours: 12
+
+log:
+  level: info
+  output: stdout
+
+openai:
+  base_url: https://api.deepseek.com/v1
+  api_key: sk-xxxx
+  model: deepseek-chat
+  max_total_tokens: 120000
+
+fofa:
+  base_url: "https://fofa.info/api/v1/search/all"
+  email: ""
+  api_key: ""
+
+agent:
+  max_iterations: 120
+  large_result_threshold: 102400
+  result_storage_dir: tmp
+  parallel_tool_execution: true
+  max_parallel_tools: 0
+  tool_retry_count: 0
+  time_awareness:
+    enabled: true
+    timezone: "UTC"
+  memory:
+    enabled: true
+    max_entries: 200
+
+database:
+  path: data/conversations.db
+  knowledge_db_path: data/knowledge.db
+
+security:
+  tools_dir: tools
+  tool_description_mode: full
+
+mcp:
+  enabled: true
+  host: 0.0.0.0
+  port: 8081
+
+external_mcp:
+  servers: {}
+
+knowledge:
+  enabled: false
+  base_path: knowledge_base
+  embedding:
+    provider: openai
+    model: text-embedding-v4
+    base_url: https://api.deepseek.com/v1
+    api_key: sk-xxxxxx
+  retrieval:
+    top_k: 5
+    similarity_threshold: 0.7
+    hybrid_weight: 0.7
+
+robots:
+  wecom:
+    enabled: false
+    token: ""
+    encoding_aes_key: ""
+    corp_id: ""
+    secret: ""
+    agent_id: 0
+  dingtalk:
+    enabled: false
+    client_id: ""
+    client_secret: ""
+  lark:
+    enabled: false
+    app_id: ""
+    app_secret: ""
+    verify_token: ""
+  telegram:
+    enabled: false
+    bot_token: ""
+    allowed_user_ids: []
+
+skills_dir: skills
+roles_dir: roles

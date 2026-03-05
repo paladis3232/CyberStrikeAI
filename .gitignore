@@ -1,0 +1,28 @@
+# Local runtime config / secrets
+config.yaml
+config.yaml.backup
+.env
+.env.*
+
+# Local databases and runtime state
+data/
+*.db
+*.db-shm
+*.db-wal
+tmp/
+logs/
+*.log
+*.pid
+
+# Local build outputs
+cyberstrike-ai
+dist/
+build/
+
+# Local Python environment
+venv/
+.venv/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

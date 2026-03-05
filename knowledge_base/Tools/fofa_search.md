@@ -1,0 +1,532 @@
+# fofa_search
+
+## Overview
+- Tool name: `fofa_search`
+- Enabled in config: `false`
+- Executable: `python3`
+- Default args: `-c import sys
+import json
+import base64
+import requests
+import os
+
+# ==================== FOFA Configuration ====================
+# Configure your FOFA account information here
+# You can also set environment variables: FOFA_EMAIL and FOFA_API_KEY
+# enable defaults to false, must be enabled to call this MCP
+FOFA_EMAIL = ""  # Enter your FOFA account email
+FOFA_API_KEY = ""  # Enter your FOFA API key
+# ==================================================
+
+# FOFA API base URL
+base_url = "https://fofa.info/api/v1/search/all"
+
+# Parse arguments (from JSON string or command-line arguments)
+def parse_args():
+    # Try to read JSON config from the first argument
+    if len(sys.argv) > 1:
+        try:
+            # Ensure sys.argv[1] is a string
+            arg1 = str(sys.argv[1])
+            # Try to parse as JSON
+            config = json.loads(arg1)
+            # Ensure the returned value is a dict type
+            if isinstance(config, dict):
+                return config
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # If not JSON, use traditional positional argument style
+            pass
+
+    # Traditional positional argument style (backward compatible)
+    # Note: email and api_key have been removed from parameters, now read from config
+    # Parameter positions: query=2, size=3, page=4, fields=5, full=6
+    # But in sys.argv, due to python3 -c "code" format, actual positions need adjustment
+    # sys.argv[0] is '-c', sys.argv[1] starts with actual arguments
+    config = {}
+    if len(sys.argv) > 1:
+        config['query'] = str(sys.argv[1])
+    if len(sys.argv) > 2:
+        try:
+            config['size'] = int(sys.argv[2])
+        except (ValueError, TypeError):
+            pass
+    if len(sys.argv) > 3:
+        try:
+            config['page'] = int(sys.argv[3])
+        except (ValueError, TypeError):
+            pass
+    if len(sys.argv) > 4:
+        config['fields'] = str(sys.argv[4])
+    if len(sys.argv) > 5:
+        val = sys.argv[5]
+        if isinstance(val, str):
+            config['full'] = val.lower() in ('true', '1', 'yes')
+        else:
+            config['full'] = bool(val)
+    return config
+
+try:
+    config = parse_args()
+
+    # Ensure config is a dict type
+    if not isinstance(config, dict):
+        error_result = {
+            "status": "error",
+            "message": f"Argument parsing error: expected dict type, got {type(config).__name__}",
+            "type": "TypeError"
+        }
+        print(json.dumps(error_result, ensure_ascii=False, indent=2))
+        sys.exit(1)
+
+    # Get email and api_key from config or environment variables
+    email = os.getenv('FOFA_EMAIL', FOFA_EMAIL).strip()
+    api_key = os.getenv('FOFA_API_KEY', FOFA_API_KEY).strip()
+    query = config.get('query', '').strip()
+
+    if not email:
+        error_result = {
+            "status": "error",
+            "message": "Missing FOFA configuration: email (FOFA account email)",
+            "required_config": ["email", "api_key"],
+            "note": "Please fill in your FOFA account email in the FOFA_EMAIL config field of the YAML file, or set it in the FOFA_EMAIL environment variable"
+        }
+        print(json.dumps(error_result, ensure_ascii=False, indent=2))
+        sys.exit(1)
+
+    if not api_key:
+        error_result = {
+            "status": "error",
+            "message": "Missing FOFA configuration: api_key (FOFA API key)",
+            "required_config": ["email", "api_key"],
+            "note": "Please fill in your API key in the FOFA_API_KEY config field of the YAML file, or set it in the FOFA_API_KEY environment variable. The API key can be obtained from the FOFA user center: https://fofa.info/userInfo"
+        }
+        print(json.dumps(error_result, ensure_ascii=False, indent=2))
+        sys.exit(1)
+
+    if not query:
+        error_result = {
+            "status": "error",
+            "message": "Missing required parameter: query (search query statement)",
+            "required_params": ["query"],
+            "examples": [
+                'app="Apache"',
+                'title="login"',
+                'domain="example.com"',
+                'ip="1.1.1.1"',
+                'port="80"',
+                'country="CN"',
+                'city="Beijing"'
+            ]
+        }
+        print(json.dumps(error_result, ensure_ascii=False, indent=2))
+        sys.exit(1)
+
+    # Build request parameters
+    params = {
+        'email': email,
+        'key': api_key,
+        'qbase64': base64.b64encode(query.encode('utf-8')).decode('utf-8')
+    }
+
+    # Optional parameters
+    if 'size' in config and config['size'] is not None:
+        try:
+            size = int(config['size'])
+            if size > 0:
+                params['size'] = size
+        except (ValueError, TypeError):
+            pass
+
+    if 'page' in config and config['page'] is not None:
+        try:
+            page = int(config['page'])
+            if page > 0:
+                params['page'] = page
+        except (ValueError, TypeError):
+            pass
+
+    if 'fields' in config and config['fields']:
+        params['fields'] = str(config['fields']).strip()
+
+    if 'full' in config and config['full'] is not None:
+        full_val = config['full']
+        if isinstance(full_val, bool):
+            params['full'] = 'true' if full_val else 'false'
+        elif isinstance(full_val, str):
+            params['full'] = 'true' if full_val.lower() in ('true', '1', 'yes') else 'false'
+        elif isinstance(full_val, (int, float)):
+            params['full'] = 'true' if full_val != 0 else 'false'
+
+    # Send request
+    try:
+        response = requests.get(base_url, params=params, timeout=30)
+        response.raise_for_status()
+
+        result_data = response.json()
+
+        # Check for FOFA API errors
+        if result_data.get('error'):
+            error_result = {
+                "status": "error",
+                "message": f"FOFA API error: {result_data.get('errmsg', 'Unknown error')}",
+                "error_code": result_data.get('error'),
+                "suggestion": "Please check whether the API key is correct and whether the query statement conforms to FOFA syntax"
+            }
+            print(json.dumps(error_result, ensure_ascii=False, indent=2))
+            sys.exit(1)
+
+        # Format output results
+        output = {
+            "status": "success",
+            "query": query,
+            "size": result_data.get('size', 0),
+            "page": result_data.get('page', 1),
+            "total": result_data.get('total', 0),
+            "results_count": len(result_data.get('results', [])),
+            "results": result_data.get('results', []),
+            "message": f"Successfully retrieved {len(result_data.get('results', []))} results"
+        }
+
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+
+    except requests.exceptions.RequestException as e:
+        error_result = {
+            "status": "error",
+            "message": f"Request failed: {str(e)}",
+            "suggestion": "Please check the network connection or FOFA API service status"
+        }
+        print(json.dumps(error_result, ensure_ascii=False, indent=2))
+        sys.exit(1)
+
+except Exception as e:
+    error_result = {
+        "status": "error",
+        "message": f"Execution error: {str(e)}",
+        "type": type(e).__name__
+    }
+    print(json.dumps(error_result, ensure_ascii=False, indent=2))
+    sys.exit(1)
+`
+- Summary: FOFA cyberspace search engine with flexible query parameter configuration
+
+## Detailed Description
+FOFA is a cyberspace mapping search engine that can search internet assets using various query conditions.
+
+**Key Features:**
+- Supports multiple query syntax types (app, title, domain, ip, port, country, city, etc.)
+- Flexible field return configuration
+- Pagination query support
+- Full data mode (full parameter)
+
+**Use Cases:**
+- Asset discovery and enumeration
+- Vulnerability impact assessment
+- Security posture awareness
+- Threat intelligence gathering
+- Bug bounty reconnaissance
+
+**Query Syntax:**
+
+**Basic queries:**
+- Enter a query statement directly to search across title, HTML content, HTTP headers, and URL fields
+- If a query expression has multiple AND/OR relationships, wrap them in parentheses, e.g.: `(app="Apache" || app="Nginx") && country="CN"`
+
+**Logical operators:**
+- `=` - match; when ="" can query fields that don't exist or have empty values
+- `==` - exact match; when =="" can query fields that exist with empty values
+- `&&` - AND
+- `||` - OR
+- `!=` - not match; when !="" can query fields with non-empty values
+- `*=` - fuzzy match, use * or ? for searching
+- `()` - specify query priority, highest priority inside parentheses
+
+**Common query syntax categories:**
+
+**Basic:** `ip` (supports IPv4/IPv6/C-class), `port`, `domain`, `host`, `os`, `server`, `asn`, `org`, `is_domain`, `is_ipv6`
+
+**Tag-based:** `app` (application identification), `fid` (site fingerprint), `product`, `product.version`, `category`, `type` (service/subdomain), `cloud_name`, `is_cloud`, `is_fraud`, `is_honeypot`
+
+**Protocol (type=service):** `protocol`, `banner`, `banner_hash`, `banner_fid`, `base_protocol` (tcp/udp)
+
+**Website (type=subdomain):** `title`, `header`, `header_hash`, `body`, `body_hash`, `js_name`, `js_md5`, `cname`, `cname_domain`, `icon_hash`, `status_code`, `icp`, `sdk_hash`
+
+**Geolocation:** `country` (supports codes/names), `region` (supports English/Chinese, Chinese only for China), `city`
+
+**Certificate:** `cert`, `cert.subject`, `cert.issuer`, `cert.subject.org`, `cert.subject.cn`, `cert.issuer.org`, `cert.issuer.cn`, `cert.domain`, `cert.is_equal`, `cert.is_valid`, `cert.is_match`, `cert.is_expired`, `jarm`, `tls.version`, `tls.ja3s`, `cert.sn`, `cert.not_after.after/before`, `cert.not_before.after/before`
+
+**Time:** `after` (updated after a certain time), `before` (updated before a certain time)
+
+**Standalone IP syntax (cannot be combined with other syntax):** `port_size`, `port_size_gt`, `port_size_lt`, `ip_ports`, `ip_country`, `ip_region`, `ip_city`, `ip_after`, `ip_before`
+
+**Common query examples:**
+- `app="Apache"` - search for Apache applications
+- `title="login"` - search for pages with "login" in the title
+- `domain="example.com"` - search for a specific domain
+- `ip="1.1.1.1"` or `ip="220.181.111.1/24"` - search IP or C-class range
+- `port="80"` - search assets with port 80 open
+- `country="CN"` or `country="China"` - search assets in China
+- `city="Beijing"` - search assets in Beijing
+- `app="Apache" && country="CN"` - combined query
+- `(app="Apache" || app="Nginx") && country="CN"` - complex query with parentheses
+- `title*="login"` - fuzzy match title
+- `after="2023-01-01" && before="2023-12-01"` - time range query
+
+**Detailed syntax documentation:** For more syntax descriptions and component lists, refer to the official FOFA documentation
+
+**Notes:**
+- API calls have rate limits, use responsibly
+- Number of query results is limited by account permissions
+- The full parameter requires elevated permissions
+
+## Parameters
+### `query`
+- Type: `string`
+- Required: `true`
+- Position: `2`
+- Format: `positional`
+- Description: FOFA query statement (required)
+
+### `size`
+- Type: `int`
+- Required: `false`
+- Position: `3`
+- Format: `positional`
+- Default: `100`
+- Description: Number of results to return (optional)
+
+### `page`
+- Type: `int`
+- Required: `false`
+- Position: `4`
+- Format: `positional`
+- Default: `1`
+- Description: Page number (optional)
+
+### `fields`
+- Type: `string`
+- Required: `false`
+- Position: `5`
+- Format: `positional`
+- Default: `ip,port,domain`
+- Description: List of fields to return (optional)
+
+### `full`
+- Type: `bool`
+- Required: `false`
+- Position: `6`
+- Format: `positional`
+- Default: `False`
+- Description: Whether to return full data (optional)
+
+## Invocation Template
+```bash
+python3 -c import sys
+import json
+import base64
+import requests
+import os
+
+# ==================== FOFA Configuration ====================
+# Configure your FOFA account information here
+# You can also set environment variables: FOFA_EMAIL and FOFA_API_KEY
+# enable defaults to false, must be enabled to call this MCP
+FOFA_EMAIL = ""  # Enter your FOFA account email
+FOFA_API_KEY = ""  # Enter your FOFA API key
+# ==================================================
+
+# FOFA API base URL
+base_url = "https://fofa.info/api/v1/search/all"
+
+# Parse arguments (from JSON string or command-line arguments)
+def parse_args():
+    # Try to read JSON config from the first argument
+    if len(sys.argv) > 1:
+        try:
+            # Ensure sys.argv[1] is a string
+            arg1 = str(sys.argv[1])
+            # Try to parse as JSON
+            config = json.loads(arg1)
+            # Ensure the returned value is a dict type
+            if isinstance(config, dict):
+                return config
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # If not JSON, use traditional positional argument style
+            pass
+
+    # Traditional positional argument style (backward compatible)
+    # Note: email and api_key have been removed from parameters, now read from config
+    # Parameter positions: query=2, size=3, page=4, fields=5, full=6
+    # But in sys.argv, due to python3 -c "code" format, actual positions need adjustment
+    # sys.argv[0] is '-c', sys.argv[1] starts with actual arguments
+    config = {}
+    if len(sys.argv) > 1:
+        config['query'] = str(sys.argv[1])
+    if len(sys.argv) > 2:
+        try:
+            config['size'] = int(sys.argv[2])
+        except (ValueError, TypeError):
+            pass
+    if len(sys.argv) > 3:
+        try:
+            config['page'] = int(sys.argv[3])
+        except (ValueError, TypeError):
+            pass
+    if len(sys.argv) > 4:
+        config['fields'] = str(sys.argv[4])
+    if len(sys.argv) > 5:
+        val = sys.argv[5]
+        if isinstance(val, str):
+            config['full'] = val.lower() in ('true', '1', 'yes')
+        else:
+            config['full'] = bool(val)
+    return config
+
+try:
+    config = parse_args()
+
+    # Ensure config is a dict type
+    if not isinstance(config, dict):
+        error_result = {
+            "status": "error",
+            "message": f"Argument parsing error: expected dict type, got {type(config).__name__}",
+            "type": "TypeError"
+        }
+        print(json.dumps(error_result, ensure_ascii=False, indent=2))
+        sys.exit(1)
+
+    # Get email and api_key from config or environment variables
+    email = os.getenv('FOFA_EMAIL', FOFA_EMAIL).strip()
+    api_key = os.getenv('FOFA_API_KEY', FOFA_API_KEY).strip()
+    query = config.get('query', '').strip()
+
+    if not email:
+        error_result = {
+            "status": "error",
+            "message": "Missing FOFA configuration: email (FOFA account email)",
+            "required_config": ["email", "api_key"],
+            "note": "Please fill in your FOFA account email in the FOFA_EMAIL config field of the YAML file, or set it in the FOFA_EMAIL environment variable"
+        }
+        print(json.dumps(error_result, ensure_ascii=False, indent=2))
+        sys.exit(1)
+
+    if not api_key:
+        error_result = {
+            "status": "error",
+            "message": "Missing FOFA configuration: api_key (FOFA API key)",
+            "required_config": ["email", "api_key"],
+            "note": "Please fill in your API key in the FOFA_API_KEY config field of the YAML file, or set it in the FOFA_API_KEY environment variable. The API key can be obtained from the FOFA user center: https://fofa.info/userInfo"
+        }
+        print(json.dumps(error_result, ensure_ascii=False, indent=2))
+        sys.exit(1)
+
+    if not query:
+        error_result = {
+            "status": "error",
+            "message": "Missing required parameter: query (search query statement)",
+            "required_params": ["query"],
+            "examples": [
+                'app="Apache"',
+                'title="login"',
+                'domain="example.com"',
+                'ip="1.1.1.1"',
+                'port="80"',
+                'country="CN"',
+                'city="Beijing"'
+            ]
+        }
+        print(json.dumps(error_result, ensure_ascii=False, indent=2))
+        sys.exit(1)
+
+    # Build request parameters
+    params = {
+        'email': email,
+        'key': api_key,
+        'qbase64': base64.b64encode(query.encode('utf-8')).decode('utf-8')
+    }
+
+    # Optional parameters
+    if 'size' in config and config['size'] is not None:
+        try:
+            size = int(config['size'])
+            if size > 0:
+                params['size'] = size
+        except (ValueError, TypeError):
+            pass
+
+    if 'page' in config and config['page'] is not None:
+        try:
+            page = int(config['page'])
+            if page > 0:
+                params['page'] = page
+        except (ValueError, TypeError):
+            pass
+
+    if 'fields' in config and config['fields']:
+        params['fields'] = str(config['fields']).strip()
+
+    if 'full' in config and config['full'] is not None:
+        full_val = config['full']
+        if isinstance(full_val, bool):
+            params['full'] = 'true' if full_val else 'false'
+        elif isinstance(full_val, str):
+            params['full'] = 'true' if full_val.lower() in ('true', '1', 'yes') else 'false'
+        elif isinstance(full_val, (int, float)):
+            params['full'] = 'true' if full_val != 0 else 'false'
+
+    # Send request
+    try:
+        response = requests.get(base_url, params=params, timeout=30)
+        response.raise_for_status()
+
+        result_data = response.json()
+
+        # Check for FOFA API errors
+        if result_data.get('error'):
+            error_result = {
+                "status": "error",
+                "message": f"FOFA API error: {result_data.get('errmsg', 'Unknown error')}",
+                "error_code": result_data.get('error'),
+                "suggestion": "Please check whether the API key is correct and whether the query statement conforms to FOFA syntax"
+            }
+            print(json.dumps(error_result, ensure_ascii=False, indent=2))
+            sys.exit(1)
+
+        # Format output results
+        output = {
+            "status": "success",
+            "query": query,
+            "size": result_data.get('size', 0),
+            "page": result_data.get('page', 1),
+            "total": result_data.get('total', 0),
+            "results_count": len(result_data.get('results', [])),
+            "results": result_data.get('results', []),
+            "message": f"Successfully retrieved {len(result_data.get('results', []))} results"
+        }
+
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+
+    except requests.exceptions.RequestException as e:
+        error_result = {
+            "status": "error",
+            "message": f"Request failed: {str(e)}",
+            "suggestion": "Please check the network connection or FOFA API service status"
+        }
+        print(json.dumps(error_result, ensure_ascii=False, indent=2))
+        sys.exit(1)
+
+except Exception as e:
+    error_result = {
+        "status": "error",
+        "message": f"Execution error: {str(e)}",
+        "type": type(e).__name__
+    }
+    print(json.dumps(error_result, ensure_ascii=False, indent=2))
+    sys.exit(1)
+ <query> <size> <page> <fields> <full>
+```
+
+## Model Usage Guidance
+- Use this tool only within authorized scope.
+- Prefer the narrowest target/argument set before broad scans.
+- For long outputs, store results and summarize key findings.
+- Validate parameter formats before execution to reduce command errors.

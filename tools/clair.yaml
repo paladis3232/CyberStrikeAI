@@ -1,6 +1,6 @@
 name: "clair"
 command: "clair"
-enabled: false
+enabled: true
 short_description: "Container vulnerability analysis tool"
 description: |
   Clair is a container vulnerability analysis tool for scanning container images for vulnerabilities.

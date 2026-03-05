@@ -21,17 +21,41 @@
 
     // ── API helpers ──────────────────────────────────────────────────────────
 
-    async function apiFetch(url, options) {
-        const res = await fetch(url, {
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            ...options,
-        });
+    async function apiFetch(url, options = {}) {
+        const reqOptions = { ...options, credentials: 'include' };
+        const headers = new Headers(options.headers || {});
+        if (!headers.has('Content-Type') && !(reqOptions.body instanceof FormData)) {
+            headers.set('Content-Type', 'application/json');
+        }
+        reqOptions.headers = headers;
+
+        let res;
+        if (typeof window.apiFetch === 'function') {
+            // Reuse shared auth-aware fetch so Authorization is injected consistently.
+            res = await window.apiFetch(url, reqOptions);
+        } else {
+            // Fallback: attach token from localStorage if available.
+            try {
+                const raw = localStorage.getItem('cyberstrike-auth');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed.token && !headers.has('Authorization')) {
+                        headers.set('Authorization', `Bearer ${parsed.token}`);
+                    }
+                }
+            } catch (_) {
+                // ignore localStorage parse failures
+            }
+            res = await fetch(url, reqOptions);
+        }
+
         if (!res.ok) {
             const body = await res.json().catch(() => ({}));
             throw new Error(body.error || `HTTP ${res.status}`);
         }
-        return res.json();
+
+        if (res.status === 204) return {};
+        return res.json().catch(() => ({}));
     }
 
     // ── Stats ────────────────────────────────────────────────────────────────

@@ -117,8 +117,8 @@ CyberStrikeAI ships with 100+ curated tools covering the whole kill chain:
 
 **One-Command Deployment:**
 ```bash
-git clone https://github.com/Ed1s0nZ/CyberStrikeAI.git
-cd CyberStrikeAI-main
+git clone https://github.com/cybersecua/CyberStrikeAI.git
+cd CyberStrikeAI
 chmod +x run.sh && ./run.sh
 ```
 
@@ -345,7 +345,7 @@ A test SSE MCP server is available at `cmd/test-sse-mcp-server/` for validation 
 - **Retrieval logs** – tracks all knowledge retrieval operations for audit and debugging.
 
 **Quick Start (Using Pre-built Knowledge Base):**
-1. **Download the knowledge database** – Download the pre-built knowledge database file from [GitHub Releases](https://github.com/Ed1s0nZ/CyberStrikeAI/releases).
+1. **Download the knowledge database** – Download the pre-built knowledge database file from [GitHub Releases](https://github.com/cybersecua/CyberStrikeAI/releases).
 2. **Extract and place** – Extract the downloaded knowledge database file (`knowledge.db`) and place it in the project's `data/` directory.
 3. **Restart the service** – Restart the CyberStrikeAI service, and the knowledge base will be ready to use immediately without rebuilding the index.
 
@@ -619,7 +619,7 @@ CyberStrikeAI has joined [404Starlink](https://github.com/knownsec/404StarLink)
 </div>
 
 ## Stargazers over time
-![Stargazers over time](https://starchart.cc/Ed1s0nZ/CyberStrikeAI.svg)
+![Stargazers over time](https://starchart.cc/cybersecua/CyberStrikeAI.svg)
 
 
 ---

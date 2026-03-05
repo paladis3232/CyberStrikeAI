@@ -10,15 +10,85 @@ args:
     import os
 
     # ==================== FOFA Configuration ====================
-    # Configure your FOFA account information here
-    # You can also set environment variables: FOFA_EMAIL and FOFA_API_KEY
-    # enable defaults to false, must be enabled to call this MCP
-    FOFA_EMAIL = ""  # Enter your FOFA account email
-    FOFA_API_KEY = ""  # Enter your FOFA API key
+    # Configure fallback values here if needed.
+    # Preferred sources:
+    # 1) Environment variables FOFA_EMAIL / FOFA_API_KEY
+    # 2) config.yaml -> fofa.email / fofa.api_key (WebUI-managed)
+    # 3) Fallback constants below
+    FOFA_EMAIL = ""
+    FOFA_API_KEY = ""
     # ==================================================
 
     # FOFA API base URL
     base_url = "https://fofa.info/api/v1/search/all"
+
+    def _clean_yaml_value(raw):
+        value = raw.strip()
+        if value.startswith('"') and value.endswith('"') and len(value) >= 2:
+            return value[1:-1]
+        if value.startswith("'") and value.endswith("'") and len(value) >= 2:
+            return value[1:-1]
+        return value
+
+    def load_fofa_from_config_yaml():
+        config_paths = []
+        env_cfg = os.getenv('CYBERSTRIKE_CONFIG_PATH', '').strip()
+        if env_cfg:
+            config_paths.append(env_cfg)
+        config_paths.append('config.yaml')
+
+        seen = set()
+        for path in config_paths:
+            abs_path = os.path.abspath(path)
+            if abs_path in seen:
+                continue
+            seen.add(abs_path)
+            if not os.path.isfile(abs_path):
+                continue
+
+            try:
+                with open(abs_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+            except Exception:
+                continue
+
+            in_fofa = False
+            fofa_indent = None
+            email = ""
+            api_key = ""
+
+            for raw_line in lines:
+                if not raw_line.strip() or raw_line.lstrip().startswith('#'):
+                    continue
+
+                indent = len(raw_line) - len(raw_line.lstrip(' '))
+                line = raw_line.strip()
+
+                if not in_fofa:
+                    if line == 'fofa:':
+                        in_fofa = True
+                        fofa_indent = indent
+                    continue
+
+                # End of fofa block
+                if indent <= fofa_indent and line.endswith(':'):
+                    break
+
+                # Drop inline comments after key/value content
+                if '#' in line:
+                    line = line.split('#', 1)[0].rstrip()
+                    if not line:
+                        continue
+
+                if line.startswith('email:'):
+                    email = _clean_yaml_value(line.split(':', 1)[1])
+                elif line.startswith('api_key:'):
+                    api_key = _clean_yaml_value(line.split(':', 1)[1])
+
+            if email or api_key:
+                return email, api_key
+
+        return "", ""
 
     # Parse arguments (from JSON string or command-line arguments)
     def parse_args():
@@ -77,9 +147,13 @@ args:
             print(json.dumps(error_result, ensure_ascii=False, indent=2))
             sys.exit(1)
 
-        # Get email and api_key from config or environment variables
-        email = os.getenv('FOFA_EMAIL', FOFA_EMAIL).strip()
-        api_key = os.getenv('FOFA_API_KEY', FOFA_API_KEY).strip()
+        # Resolve FOFA credentials from:
+        # env -> config.yaml (WebUI-managed) -> fallback constants
+        env_email = os.getenv('FOFA_EMAIL', '').strip()
+        env_api_key = os.getenv('FOFA_API_KEY', '').strip()
+        cfg_email, cfg_api_key = load_fofa_from_config_yaml()
+        email = env_email or cfg_email or FOFA_EMAIL.strip()
+        api_key = env_api_key or cfg_api_key or FOFA_API_KEY.strip()
         query = config.get('query', '').strip()
 
         if not email:
@@ -87,7 +161,7 @@ args:
                 "status": "error",
                 "message": "Missing FOFA configuration: email (FOFA account email)",
                 "required_config": ["email", "api_key"],
-                "note": "Please fill in your FOFA account email in the FOFA_EMAIL config field of the YAML file, or set it in the FOFA_EMAIL environment variable"
+                "note": "Please set fofa.email in config.yaml (WebUI Settings) or export FOFA_EMAIL"
             }
             print(json.dumps(error_result, ensure_ascii=False, indent=2))
             sys.exit(1)
@@ -97,7 +171,7 @@ args:
                 "status": "error",
                 "message": "Missing FOFA configuration: api_key (FOFA API key)",
                 "required_config": ["email", "api_key"],
-                "note": "Please fill in your API key in the FOFA_API_KEY config field of the YAML file, or set it in the FOFA_API_KEY environment variable. The API key can be obtained from the FOFA user center: https://fofa.info/userInfo"
+                "note": "Please set fofa.api_key in config.yaml (WebUI Settings) or export FOFA_API_KEY. API key is available at https://fofa.info/userInfo"
             }
             print(json.dumps(error_result, ensure_ascii=False, indent=2))
             sys.exit(1)
@@ -156,6 +230,20 @@ args:
             elif isinstance(full_val, (int, float)):
                 params['full'] = 'true' if full_val != 0 else 'false'
 
+        def mask_secret(value, keep=3):
+            if value is None:
+                return ""
+            s = str(value)
+            if len(s) <= keep * 2:
+                return "*" * len(s)
+            return s[:keep] + ("*" * (len(s) - keep * 2)) + s[-keep:]
+
+        # Build a debug URL preview to verify query-parameter wiring.
+        preview_params = dict(params)
+        preview_params['email'] = mask_secret(email, keep=2)
+        preview_params['key'] = mask_secret(api_key, keep=3)
+        request_url_preview = requests.Request('GET', base_url, params=preview_params).prepare().url
+
         # Send request
         try:
             response = requests.get(base_url, params=params, timeout=30)
@@ -169,7 +257,9 @@ args:
                     "status": "error",
                     "message": f"FOFA API error: {result_data.get('errmsg', 'Unknown error')}",
                     "error_code": result_data.get('error'),
-                    "suggestion": "Please check whether the API key is correct and whether the query statement conforms to FOFA syntax"
+                    "suggestion": "Please check whether the API key is correct and whether the query statement conforms to FOFA syntax",
+                    "request_method": "GET",
+                    "request_url_preview": request_url_preview
                 }
                 print(json.dumps(error_result, ensure_ascii=False, indent=2))
                 sys.exit(1)
@@ -183,7 +273,9 @@ args:
                 "total": result_data.get('total', 0),
                 "results_count": len(result_data.get('results', [])),
                 "results": result_data.get('results', []),
-                "message": f"Successfully retrieved {len(result_data.get('results', []))} results"
+                "message": f"Successfully retrieved {len(result_data.get('results', []))} results",
+                "request_method": "GET",
+                "request_url_preview": request_url_preview
             }
 
             print(json.dumps(output, ensure_ascii=False, indent=2))
@@ -192,7 +284,9 @@ args:
             error_result = {
                 "status": "error",
                 "message": f"Request failed: {str(e)}",
-                "suggestion": "Please check the network connection or FOFA API service status"
+                "suggestion": "Please check the network connection or FOFA API service status",
+                "request_method": "GET",
+                "request_url_preview": request_url_preview
             }
             print(json.dumps(error_result, ensure_ascii=False, indent=2))
             sys.exit(1)
@@ -205,7 +299,7 @@ args:
         }
         print(json.dumps(error_result, ensure_ascii=False, indent=2))
         sys.exit(1)
-enabled: false
+enabled: true
 short_description: "FOFA cyberspace search engine with flexible query parameter configuration"
 description: |
   FOFA is a cyberspace mapping search engine that can search internet assets using various query conditions.
@@ -277,7 +371,6 @@ description: |
   - Number of query results is limited by account permissions
   - The full parameter requires elevated permissions
 parameters:
-
   - name: "query"
     type: "string"
     description: |

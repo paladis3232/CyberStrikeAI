@@ -1,6 +1,6 @@
 name: "pacu"
 command: "pacu"
-enabled: false
+enabled: true
 short_description: "AWS penetration testing framework"
 description: |
   Pacu is an AWS penetration testing framework for testing the security of AWS environments.

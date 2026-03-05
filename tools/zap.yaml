@@ -1,6 +1,6 @@
 name: "zap"
 command: "zap-cli"
-enabled: false
+enabled: true
 short_description: "OWASP ZAP web application security scanner"
 description: |
   OWASP ZAP is a web application security scanner for discovering security vulnerabilities in web applications.

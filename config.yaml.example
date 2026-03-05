@@ -19,7 +19,7 @@ server:
 
 # Authentication configuration
 auth:
-  password:  # Web login password — please change this to a strong password
+  password: change-me-strong-password # Web login password — please change this to a strong password
   session_duration_hours: 12          # Login session duration (hours); re-login required after expiry
 
 # Logging configuration
@@ -39,9 +39,9 @@ log:
 #   - Other OpenAI-protocol-compatible APIs
 # Common models: gpt-4, gpt-3.5-turbo, deepseek-chat, claude-3-opus, etc.
 openai:
-  base_url: https://api.deepseek.com/v1 # API base URL (required)
-  api_key: sk-xxxx                       # API key (required)
-  model: deepseek-chat                   # Model name (required)
+  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1 # API base URL (required)
+  api_key: sk-your-api-key                                      # API key (required)
+  model: qwen3-max                                             # Model name (required)
   max_total_tokens: 120000              # Maximum token limit for LLM-related context (shared by memory compression and attack-chain building)
 
 # ============================================
@@ -125,13 +125,13 @@ external_mcp:
 # ============================================
 
 knowledge:
-  enabled: false                    # Whether to enable the knowledge retrieval feature
+  enabled: true                    # Whether to enable the knowledge retrieval feature
   base_path: knowledge_base         # Knowledge base directory path (relative to the configuration file location)
   embedding:
     provider: openai                # Embedding model provider (currently only openai is supported)
     model: text-embedding-v4        # Embedding model name
-    base_url: https://api.deepseek.com/v1 # Leave blank to use the base_url from the OpenAI configuration
-    api_key: sk-xxxxxx              # Leave blank to use the api_key from the OpenAI configuration
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1 # Leave blank to use the base_url from the OpenAI configuration
+    api_key: sk-your-api-key                                    # Leave blank to use the api_key from the OpenAI configuration
   retrieval:
     top_k: 5                        # Number of Top-K results returned by retrieval
     similarity_threshold: 0.7       # Similarity threshold (0–1); results below this value are filtered out

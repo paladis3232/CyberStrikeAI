@@ -1,0 +1,159 @@
+# install-python-package
+
+## Overview
+- Tool name: `install-python-package`
+- Enabled in config: `true`
+- Executable: `/bin/bash`
+- Default args: `-c set -euo pipefail
+
+PACKAGE="$1"
+ENV_NAME="${2:-default}"
+ADDITIONAL_ARGS="${3:-}"
+
+BASE_DIR="${HOME}/.cyberstrike/venvs"
+
+detect_project_root() {
+  if [ -n "${CYBERSTRIKE_ROOT:-}" ] && [ -d "${CYBERSTRIKE_ROOT}" ]; then
+    printf '%s\n' "${CYBERSTRIKE_ROOT}"
+    return
+  fi
+  if command -v git >/dev/null 2>&1; then
+    local root_path
+    if root_path=$(git rev-parse --show-toplevel 2>/dev/null); then
+      printf '%s\n' "$root_path"
+      return
+    fi
+  fi
+  printf '%s\n' "$(pwd)"
+}
+
+resolve_env_dir() {
+  local requested="$1"
+  if [ -n "${VIRTUAL_ENV:-}" ] && { [ -z "$requested" ] || [ "$requested" = "default" ]; }; then
+    printf '%s\n' "$VIRTUAL_ENV"
+    return
+  fi
+  if [ -z "$requested" ] || [ "$requested" = "default" ]; then
+    local root
+    root="$(detect_project_root)"
+    printf '%s/venv\n' "$root"
+    return
+  fi
+  printf '%s/%s\n' "$BASE_DIR" "$requested"
+}
+
+ENV_DIR="$(resolve_env_dir "$ENV_NAME")"
+mkdir -p "$(dirname "$ENV_DIR")"
+if [ ! -d "$ENV_DIR" ]; then
+  python3 -m venv "$ENV_DIR"
+fi
+
+# shellcheck disable=SC1090
+source "$ENV_DIR/bin/activate"
+
+if [ -n "$ADDITIONAL_ARGS" ]; then
+  pip install "$PACKAGE" $ADDITIONAL_ARGS
+else
+  pip install "$PACKAGE"
+fi
+ _`
+- Summary: Create/activate a virtual environment and install Python dependencies
+
+## Detailed Description
+Install Python packages in a virtual environment.
+
+**Key Features:**
+- Install Python packages
+- Virtual environment support
+- Dependency management
+
+**Use Cases:**
+- Environment configuration
+- Dependency installation
+- Tool installation
+
+## Parameters
+### `package`
+- Type: `string`
+- Required: `true`
+- Position: `0`
+- Format: `positional`
+- Description: Python package name to install
+
+### `env_name`
+- Type: `string`
+- Required: `false`
+- Position: `1`
+- Format: `positional`
+- Default: `default`
+- Description: Virtual environment name (default: default)
+
+### `additional_args`
+- Type: `string`
+- Required: `false`
+- Format: `positional`
+- Default: ``
+- Description: Additional install-python-package parameters. Used to pass install-python-package options not defined in the parameter list.
+
+## Invocation Template
+```bash
+/bin/bash -c set -euo pipefail
+
+PACKAGE="$1"
+ENV_NAME="${2:-default}"
+ADDITIONAL_ARGS="${3:-}"
+
+BASE_DIR="${HOME}/.cyberstrike/venvs"
+
+detect_project_root() {
+  if [ -n "${CYBERSTRIKE_ROOT:-}" ] && [ -d "${CYBERSTRIKE_ROOT}" ]; then
+    printf '%s\n' "${CYBERSTRIKE_ROOT}"
+    return
+  fi
+  if command -v git >/dev/null 2>&1; then
+    local root_path
+    if root_path=$(git rev-parse --show-toplevel 2>/dev/null); then
+      printf '%s\n' "$root_path"
+      return
+    fi
+  fi
+  printf '%s\n' "$(pwd)"
+}
+
+resolve_env_dir() {
+  local requested="$1"
+  if [ -n "${VIRTUAL_ENV:-}" ] && { [ -z "$requested" ] || [ "$requested" = "default" ]; }; then
+    printf '%s\n' "$VIRTUAL_ENV"
+    return
+  fi
+  if [ -z "$requested" ] || [ "$requested" = "default" ]; then
+    local root
+    root="$(detect_project_root)"
+    printf '%s/venv\n' "$root"
+    return
+  fi
+  printf '%s/%s\n' "$BASE_DIR" "$requested"
+}
+
+ENV_DIR="$(resolve_env_dir "$ENV_NAME")"
+mkdir -p "$(dirname "$ENV_DIR")"
+if [ ! -d "$ENV_DIR" ]; then
+  python3 -m venv "$ENV_DIR"
+fi
+
+# shellcheck disable=SC1090
+source "$ENV_DIR/bin/activate"
+
+if [ -n "$ADDITIONAL_ARGS" ]; then
+  pip install "$PACKAGE" $ADDITIONAL_ARGS
+else
+  pip install "$PACKAGE"
+fi
+ _ <package> <env_name> <additional_args>
+```
+
+## Model Usage Guidance
+- Use this tool only within authorized scope.
+- Prefer the narrowest target/argument set before broad scans.
+- For long outputs, store results and summarize key findings.
+- Validate parameter formats before execution to reduce command errors.

@@ -1,0 +1,53 @@
+name: "bitrix-decrypt"
+command: "bitrix-decrypt"
+enabled: true
+short_description: "Decrypt Bitrix LDAP/Mail plugin passwords from DB-encrypted values"
+description: |
+  Bitrix Decrypt is a helper utility based on the public `bitrix-decrypt` repository that decrypts Bitrix-stored plugin passwords for LDAP and Mail integrations.
+
+  **Key Features:**
+  - Supports two decryptor modes: `ldap` and `mail`
+  - Decrypts Bitrix password values from DB/API exports
+  - Accepts custom salt or uses mode defaults
+  - Useful during authorized incident response and recovery
+
+  **Use Cases:**
+  - Validate credential exposure impact in Bitrix assessments
+  - Recover integration credentials in authorized IR workflows
+  - Confirm Bitrix encryption/decryption behavior during security reviews
+
+  **Important Notes:**
+  - Handles sensitive credentials; protect output and logs.
+  - Use only with explicit authorization.
+parameters:
+  - name: "mode"
+    type: "string"
+    description: "Decryptor mode: ldap or mail"
+    required: false
+    default: "mail"
+    flag: "--mode"
+    format: "flag"
+    options: ["ldap", "mail"]
+  - name: "pass"
+    type: "string"
+    description: "Encrypted Bitrix password value (base64-like hash string)"
+    required: true
+    flag: "--pass"
+    format: "flag"
+  - name: "salt"
+    type: "string"
+    description: |
+      Salt value from Bitrix option `main.pwdhashadd`.
+
+      Defaults by mode:
+      - `ldap`: `ldap`
+      - `mail`: empty string
+    required: false
+    default: ""
+    flag: "--salt"
+    format: "flag"
+  - name: "additional_args"
+    type: "string"
+    description: "Additional bitrix-decrypt wrapper arguments"
+    required: false
+    format: "positional"

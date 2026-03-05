@@ -17,6 +17,11 @@ description: |
   - Security assessment
   - Penetration testing
   - Vulnerability verification
+
+  **Bitrix Template Pack:**
+  - If installed via CyberStrike installer script, Bitrix-focused templates are available at:
+    `/opt/cyberstrike-tools/bitrix-nuclei-templates`
+  - Run with `-t /opt/cyberstrike-tools/bitrix-nuclei-templates` to execute this pack.
 parameters:
   - name: "target"
     type: "string"

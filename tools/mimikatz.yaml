@@ -1,6 +1,6 @@
 name: "mimikatz"
 command: "mimikatz.exe"
-enabled: false
+enabled: true
 short_description: "Windows credential extraction tool for extracting passwords and hashes from memory"
 description: |
   Mimikatz is a powerful Windows credential extraction tool that can extract plaintext passwords, hashes, tickets, and other sensitive information from memory.

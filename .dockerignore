@@ -1,0 +1,9 @@
+.git
+.github
+data
+tmp
+venv
+*.db
+*.log
+cyberstrike-ai
+cyberstrike-ai-mcp

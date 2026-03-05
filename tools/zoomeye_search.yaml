@@ -13,11 +13,11 @@ args:
     # Configure your ZoomEye account information here
     # You can also set the environment variable: ZOOMEYE_API_KEY
     # enable defaults to false, must be enabled to call this MCP
-    ZOOMEYE_API_KEY = ""  # Enter your ZoomEye API key
+    ZOOMEYE_API_KEY = "FE10EE81-CF29-E5E29-d227-1189240ddac"  # ZoomEye API key
     # ==================================================
 
     # ZoomEye API base URL
-    base_url = "https://api.zoomeye.org/v2/search"
+    base_url = "https://api.zoomeye.ai/v2/search"
 
     # Parse arguments (from JSON string or command-line arguments)
     def parse_args():
@@ -153,6 +153,21 @@ args:
         # Send request (ZoomEye API uses POST method)
         try:
             response = requests.post(base_url, json=data, headers=headers, timeout=30)
+
+            # Some accounts/endpoints are stricter on accepted payload shape.
+            # If full payload gets 400, retry with the minimal known-good body:
+            # {"qbase64": "...", "page": 1}
+            retried_minimal_payload = False
+            if response.status_code == 400:
+                minimal_data = {
+                    'qbase64': data.get('qbase64', ''),
+                    'page': int(data.get('page', 1)) if str(data.get('page', '1')).isdigit() else 1
+                }
+                response_retry = requests.post(base_url, json=minimal_data, headers=headers, timeout=30)
+                if response_retry.status_code < 400:
+                    response = response_retry
+                    retried_minimal_payload = True
+
             response.raise_for_status()
 
             result_data = response.json()
@@ -182,10 +197,31 @@ args:
                 "pagesize": result_data.get('pagesize', 10),
                 "results_count": len(data_list),
                 "results": data_list,
-                "message": f"Successfully retrieved {len(data_list)} results"
+                "message": f"Successfully retrieved {len(data_list)} results",
+                "retried_minimal_payload": retried_minimal_payload
             }
 
             print(json.dumps(output, ensure_ascii=False, indent=2))
+
+        except requests.exceptions.HTTPError as e:
+            resp = getattr(e, 'response', None)
+            status_code = resp.status_code if resp is not None else None
+            body_preview = ""
+            if resp is not None:
+                try:
+                    body_preview = (resp.text or "")[:600]
+                except Exception:
+                    body_preview = ""
+            error_result = {
+                "status": "error",
+                "message": f"Request failed: {str(e)}",
+                "http_status": status_code,
+                "response_preview": body_preview,
+                "request_payload": data,
+                "suggestion": "Check query syntax and account permissions; endpoint may reject specific payload fields for your plan"
+            }
+            print(json.dumps(error_result, ensure_ascii=False, indent=2))
+            sys.exit(1)
 
         except requests.exceptions.RequestException as e:
             error_result = {
@@ -204,7 +240,7 @@ args:
         }
         print(json.dumps(error_result, ensure_ascii=False, indent=2))
         sys.exit(1)
-enabled: false
+enabled: true
 short_description: "ZoomEye cyberspace search engine with flexible query parameter configuration"
 description: |
   ZoomEye (Zhongyou Eye) is a cyberspace mapping search engine that can search internet assets using various query conditions.

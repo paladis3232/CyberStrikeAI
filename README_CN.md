@@ -114,8 +114,8 @@ CyberStrikeAI 是一款 **AI 原生安全测试平台**，基于 Go 构建，集
 
 **一条命令部署：**
 ```bash
-git clone https://github.com/Ed1s0nZ/CyberStrikeAI.git
-cd CyberStrikeAI-main
+git clone https://github.com/cybersecua/CyberStrikeAI.git
+cd CyberStrikeAI
 chmod +x run.sh && ./run.sh
 ```
 
@@ -341,7 +341,7 @@ CyberStrikeAI 支持通过三种传输模式连接外部 MCP 服务器：
 - **检索日志**：记录所有知识检索操作，便于审计与调试。
 
 **快速开始（使用预构建知识库）：**
-1. **下载知识数据库**：从 [GitHub Releases](https://github.com/Ed1s0nZ/CyberStrikeAI/releases) 下载预构建的知识数据库文件。
+1. **下载知识数据库**：从 [GitHub Releases](https://github.com/cybersecua/CyberStrikeAI/releases) 下载预构建的知识数据库文件。
 2. **解压并放置**：将下载的知识数据库文件（`knowledge.db`）解压后放到项目的 `data/` 目录下。
 3. **重启服务**：重启 CyberStrikeAI 服务，知识库即可直接使用，无需重新构建索引。
 
@@ -513,7 +513,7 @@ CyberStrikeAI 现已加入 [404星链计划](https://github.com/knownsec/404Star
 </div>
 
 ## Stargazers over time
-![Stargazers over time](https://starchart.cc/Ed1s0nZ/CyberStrikeAI.svg)
+![Stargazers over time](https://starchart.cc/cybersecua/CyberStrikeAI.svg)
 
 ---
 

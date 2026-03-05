@@ -1,0 +1,45 @@
+name: "nuclei-bitrix"
+command: "nuclei"
+enabled: true
+args:
+  - "-t"
+  - "/opt/cyberstrike-tools/bitrix-nuclei-templates"
+short_description: "Nuclei Bitrix template pack scanner for Bitrix exposure and CVE checks"
+description: |
+  Nuclei Bitrix profile that runs templates from the public Bitrix template pack:
+  https://github.com/jhonnybonny/bitrix-nuclei-templates
+
+  **Key Features:**
+  - Bitrix-focused endpoint and exposure checks
+  - Coverage for multiple Bitrix/Bitrix24 CVE-style detections
+  - Quick baseline scan for installer remnants and common weak points
+  - Works with normal Nuclei filters (`-s`, `-tags`, custom args)
+
+  **Use Cases:**
+  - Bitrix attack-surface validation
+  - Initial triage of potentially vulnerable Bitrix deployments
+  - Regression checks after patching/hardening
+parameters:
+  - name: "target"
+    type: "string"
+    description: "Target URL or IP"
+    required: true
+    flag: "-u"
+    format: "flag"
+  - name: "severity"
+    type: "string"
+    description: "Severity filter (critical,high,medium,low,info)"
+    required: false
+    flag: "-s"
+    format: "flag"
+  - name: "tags"
+    type: "string"
+    description: "Tag filter (e.g. cve,rce,lfi,xss,bitrix)"
+    required: false
+    flag: "-tags"
+    format: "flag"
+  - name: "additional_args"
+    type: "string"
+    description: "Additional Nuclei parameters"
+    required: false
+    format: "positional"
