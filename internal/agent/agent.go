@@ -26,8 +26,8 @@ type Agent struct {
 	config                *config.OpenAIConfig
 	agentConfig           *config.AgentConfig
 	memoryCompressor      *MemoryCompressor
-	persistentMemory      *PersistentMemory  // long-lived key-value memory that survives compression
-	timeAwareness         *TimeAwareness     // temporal context injector
+	persistentMemory      *PersistentMemory   // long-lived key-value memory that survives compression
+	timeAwareness         *TimeAwareness      // temporal context injector
 	ragInjector           *RAGContextInjector // proactive RAG knowledge injection
 	mcpServer             *mcp.Server
 	externalMCPMgr        *mcp.ExternalMCPManager // external MCP manager
@@ -395,6 +395,28 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 	}
 	toolPool := make(map[string]*toolPoolEntry)
 	var toolPoolMu sync.Mutex
+	buildToolEventMemoryKey := func(executionID, toolName, toolCallID, status string, eventAt time.Time) string {
+		if executionID != "" {
+			return "tool_result:" + executionID
+		}
+		normalizedTool := strings.TrimSpace(strings.ToLower(toolName))
+		if normalizedTool == "" {
+			normalizedTool = "unknown_tool"
+		}
+		normalizedStatus := strings.TrimSpace(strings.ToLower(status))
+		if normalizedStatus == "" {
+			normalizedStatus = "unknown_status"
+		}
+		if eventAt.IsZero() {
+			eventAt = time.Now().UTC()
+		}
+		// Time-aware + event-aware fallback key:
+		// include tool, status, toolCallID (when present), and timestamp.
+		if toolCallID != "" {
+			return fmt.Sprintf("tool_event:%s:%s:%s:%d", normalizedTool, normalizedStatus, toolCallID, eventAt.UnixNano())
+		}
+		return fmt.Sprintf("tool_event:%s:%s:%d", normalizedTool, normalizedStatus, eventAt.UnixNano())
+	}
 	// classifyToolResult inspects a tool result and returns the most appropriate
 	// memory category based on content heuristics.
 	classifyToolResult := func(toolName, result string) MemoryCategory {
@@ -505,7 +527,7 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 		entry.UpdatedAt = time.Now().UTC()
 		toolPoolMu.Unlock()
 
-		if (status == "completed" || status == "failed") {
+		if status == "completed" || status == "failed" {
 			value := fmt.Sprintf("tool=%s status=%s", toolName, status)
 			if executionID != "" {
 				value += fmt.Sprintf(" execution_id=%s", executionID)
@@ -516,10 +538,7 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 			if errorText != "" {
 				value += "\nerror: " + errorText
 			}
-			memKey := "tool_result:" + toolName
-			if executionID != "" {
-				memKey = "tool_result:" + executionID
-			}
+			memKey := buildToolEventMemoryKey(executionID, toolName, toolCallID, status, entry.UpdatedAt)
 			storeToolPoolMemory(memKey, value)
 		}
 	}
@@ -1758,13 +1777,13 @@ type ToolExecutionResult struct {
 
 // parallelToolCallResult holds the result of a single parallel tool call.
 type parallelToolCallResult struct {
-	index       int
-	toolCallID  string
-	toolName    string
-	arguments   map[string]interface{}
-	execResult  *ToolExecutionResult
-	execErr     error
-	deferred    bool
+	index      int
+	toolCallID string
+	toolName   string
+	arguments  map[string]interface{}
+	execResult *ToolExecutionResult
+	execErr    error
+	deferred   bool
 }
 
 // executeToolCallsInParallel runs all tool calls concurrently and returns the results in original order.
