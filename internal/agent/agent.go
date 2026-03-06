@@ -403,6 +403,87 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 			"- Stop when objective conditions are satisfied, then deliver a final summary.\n" +
 			"</task_focus>\n"
 	}
+	extractEntityHints := func(rawInput string) []string {
+		parts := strings.Fields(rawInput)
+		seen := make(map[string]struct{})
+		hints := make([]string, 0, 8)
+		for _, p := range parts {
+			token := strings.TrimSpace(strings.Trim(p, " \t\r\n,;()[]{}<>\"'`"))
+			if token == "" {
+				continue
+			}
+			candidate := strings.TrimPrefix(strings.TrimPrefix(strings.ToLower(token), "http://"), "https://")
+			candidate = strings.TrimSuffix(candidate, "/")
+			if idx := strings.Index(candidate, "/"); idx >= 0 {
+				candidate = candidate[:idx]
+			}
+			if candidate == "" {
+				continue
+			}
+			if _, ok := seen[candidate]; ok {
+				continue
+			}
+			// Keep hosts/IP-like tokens to avoid noisy words.
+			if net.ParseIP(candidate) != nil || strings.Contains(candidate, ".") {
+				seen[candidate] = struct{}{}
+				hints = append(hints, candidate)
+			}
+			if len(hints) >= 8 {
+				break
+			}
+		}
+		return hints
+	}
+	buildMemorySimilarityBlock := func(pm *PersistentMemory, rawInput string) string {
+		if pm == nil {
+			return ""
+		}
+		query := strings.TrimSpace(rawInput)
+		if query == "" {
+			return ""
+		}
+
+		similar, err := pm.RetrieveAll(query, "", 8)
+		if err != nil {
+			a.logger.Debug("memory similarity retrieval failed", zap.Error(err))
+			similar = nil
+		}
+
+		entityHits := make([]*MemoryEntry, 0, 8)
+		for _, entity := range extractEntityHints(query) {
+			rows, listErr := pm.ListByEntity(entity, 3)
+			if listErr != nil {
+				continue
+			}
+			entityHits = append(entityHits, rows...)
+			if len(entityHits) >= 8 {
+				entityHits = entityHits[:8]
+				break
+			}
+		}
+
+		if len(similar) == 0 && len(entityHits) == 0 {
+			return ""
+		}
+
+		var sb strings.Builder
+		sb.WriteString("<memory_similarity_context>\n")
+		sb.WriteString("Similar memory entries related to the current task. Reuse this context before launching new scans:\n")
+		if len(similar) > 0 {
+			sb.WriteString("- Query matches:\n")
+			for _, e := range similar {
+				sb.WriteString(fmt.Sprintf("  • [%s][%s] %s => %s\n", e.Status, e.Category, e.Key, e.Value))
+			}
+		}
+		if len(entityHits) > 0 {
+			sb.WriteString("- Entity matches:\n")
+			for _, e := range entityHits {
+				sb.WriteString(fmt.Sprintf("  • [entity:%s][%s] %s => %s\n", e.Entity, e.Category, e.Key, e.Value))
+			}
+		}
+		sb.WriteString("</memory_similarity_context>\n")
+		return sb.String()
+	}
 	type toolPoolEntry struct {
 		ToolCallID    string
 		ToolName      string
@@ -732,6 +813,10 @@ Memory management:
   * disproven     — fact was found incorrect
 - Store memories proactively — memory survives conversation compression and server restarts
 - Before starting a scan you already ran, check tool_run memories first to avoid duplicate work
+- Mandatory introspection before major new actions:
+  1. Check similar memory entries for this target/task (` + builtin.ToolRetrieveMemory + `, ` + builtin.ToolListMemories + ` with entity/category filters)
+  2. Review knowledge-base methods/issues relevant to current objective (` + builtin.ToolSearchKnowledgeBase + `)
+  3. Then choose tools based on that memory + knowledge context, instead of repeating prior failed runs
 - Example workflow:
   1. Before scanning: list_memories category=tool_run to see completed scans
   2. After nmap scan: store_memory key="nmap_<ip>" value="<findings>" category=tool_run entity="<ip>"
@@ -813,6 +898,9 @@ Skills Library:
 		if block := pm.BuildContextBlock(); block != "" {
 			systemPrompt = block + "\n" + systemPrompt
 		}
+		if block := buildMemorySimilarityBlock(pm, userInput); block != "" {
+			systemPrompt = block + "\n" + systemPrompt
+		}
 	}
 	// Proactive RAG injection: retrieve knowledge relevant to the user's
 	// current request and embed it in the system prompt so the agent can
@@ -820,6 +908,10 @@ Skills Library:
 	if ri != nil {
 		if block := ri.BuildContextBlock(ctx, userInput); block != "" {
 			systemPrompt = systemPrompt + "\n" + block
+		}
+		methodsIssuesQuery := strings.TrimSpace(userInput + " penetration testing methods exploitation techniques vulnerability issues root cause bypass")
+		if hint := ri.ToolGuidanceHint(ctx, methodsIssuesQuery); hint != "" {
+			systemPrompt = systemPrompt + "\n" + hint + "\n"
 		}
 	}
 
