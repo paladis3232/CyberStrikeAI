@@ -2121,6 +2121,151 @@ func (a *Agent) executeToolCallsInParallel(
 	return results
 }
 
+// toolRunDuplicateCheck checks persistent memory for a previous tool_run with
+// the same tool+target+scope signature.  When a match is found it returns a
+// non-nil ToolExecutionResult containing the previous findings so the model
+// can reuse them instead of wasting an iteration re-running the same scan.
+//
+// Returns nil when no duplicate is found or the check is not applicable (e.g.
+// builtin tools, utility commands, or tools without a recognisable target).
+func (a *Agent) toolRunDuplicateCheck(toolName string, args map[string]interface{}) *ToolExecutionResult {
+	// Skip builtin tools — they are not scans.
+	if builtin.IsBuiltinTool(toolName) {
+		return nil
+	}
+	// Skip utility / file-management tools that should never be gated.
+	switch toolName {
+	case "exec", "cat", "create-file", "modify-file", "delete-file",
+		"execute-python-script", "install-python-package",
+		"query-execution-result":
+		return nil
+	}
+
+	// Extract the target from common parameter names.
+	target := ""
+	for _, key := range []string{"target", "url", "host", "ip", "domain"} {
+		if v, ok := args[key].(string); ok && strings.TrimSpace(v) != "" {
+			target = strings.TrimSpace(v)
+			break
+		}
+	}
+	if target == "" {
+		return nil // no recognisable target — skip gate
+	}
+
+	a.mu.RLock()
+	pm := a.persistentMemory
+	a.mu.RUnlock()
+	if pm == nil {
+		return nil
+	}
+
+	// Build a normalised signature that matches how storeToolResultMemory
+	// records tool_run entries: "tool=<name>" + target in value.
+	// We search for entries whose key or value contains the tool name AND
+	// whose value contains the target.
+	query := toolName + " " + target
+	hits, err := pm.Retrieve(query, MemoryCategoryToolRun, 3)
+	if err != nil || len(hits) == 0 {
+		return nil
+	}
+
+	// Filter: the hit must reference both the exact tool name and the target.
+	lowerTool := strings.ToLower(toolName)
+	lowerTarget := strings.ToLower(target)
+	var bestHit *MemoryEntry
+	for _, h := range hits {
+		lv := strings.ToLower(h.Value)
+		if strings.Contains(lv, "tool="+lowerTool) && strings.Contains(lv, lowerTarget) {
+			bestHit = h
+			break
+		}
+	}
+	if bestHit == nil {
+		return nil
+	}
+
+	// Build a concise summary of the previous run for the model.
+	// Extract the key fields from the stored value.
+	prevSummary := extractFieldFromMemoryValue(bestHit.Value, "issue_summary")
+	prevOutcome := extractFieldFromMemoryValue(bestHit.Value, "outcome")
+	prevExecID := extractFieldFromMemoryValue(bestHit.Value, "execution_id")
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Duplicate scan detected: tool %s was already run against %s.\n\n", toolName, target))
+	sb.WriteString("Previous run details:\n")
+	if prevExecID != "" {
+		sb.WriteString(fmt.Sprintf("  - Execution ID: %s\n", prevExecID))
+	}
+	if prevOutcome != "" {
+		sb.WriteString(fmt.Sprintf("  - Outcome: %s\n", prevOutcome))
+	}
+	if prevSummary != "" {
+		sb.WriteString(fmt.Sprintf("  - Summary: %s\n", prevSummary))
+	}
+	sb.WriteString(fmt.Sprintf("  - Recorded at: %s\n", bestHit.UpdatedAt.Format("2006-01-02 15:04:05")))
+	sb.WriteString("\nPrevious full output stored in memory:\n")
+	// Include truncated previous output
+	prevOutput := extractFieldFromMemoryValue(bestHit.Value, "full_output")
+	if len(prevOutput) > 2000 {
+		prevOutput = prevOutput[:2000] + "\n...[truncated — use query_execution_result to view full output]"
+	}
+	if prevOutput != "" {
+		sb.WriteString(prevOutput)
+		sb.WriteString("\n")
+	}
+	sb.WriteString("\nTo re-run with DIFFERENT parameters, call the tool again with changed arguments.\n")
+	sb.WriteString("To use these results, proceed to the next step without re-running this tool.\n")
+
+	a.logger.Info("Duplicate tool_run detected, returning cached result",
+		zap.String("tool", toolName),
+		zap.String("target", target),
+		zap.String("memoryKey", bestHit.Key),
+	)
+
+	return &ToolExecutionResult{
+		Result:  sb.String(),
+		IsError: false,
+	}
+}
+
+// extractFieldFromMemoryValue extracts a named field from the multi-line
+// "key=value" format used by storeToolResultMemory.
+func extractFieldFromMemoryValue(value, fieldName string) string {
+	prefix := fieldName + "="
+	// Handle multi-line fields: the value after "field=\n" continues until the
+	// next "field=" line.
+	lines := strings.Split(value, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, prefix) {
+			rest := strings.TrimPrefix(line, prefix)
+			rest = strings.TrimSpace(rest)
+			if rest != "" {
+				return rest
+			}
+			// Multi-line value: collect subsequent lines until next field.
+			var sb strings.Builder
+			for j := i + 1; j < len(lines); j++ {
+				// Stop if we hit another top-level field.
+				if len(lines[j]) > 0 && !strings.HasPrefix(lines[j], " ") && !strings.HasPrefix(lines[j], "\t") && strings.Contains(lines[j], "=") {
+					// Check it looks like a field (word=...)
+					eqIdx := strings.Index(lines[j], "=")
+					fieldCandidate := lines[j][:eqIdx]
+					if !strings.Contains(fieldCandidate, " ") && !strings.Contains(fieldCandidate, "/") && !strings.Contains(fieldCandidate, ":") {
+						break
+					}
+				}
+				if sb.Len() > 0 {
+					sb.WriteString("\n")
+				}
+				sb.WriteString(lines[j])
+			}
+			return strings.TrimSpace(sb.String())
+		}
+	}
+	return ""
+}
+
 // executeToolViaMCP executes a tool via MCP
 // Even if tool execution fails, return a result rather than an error so AI can handle the error situation
 func (a *Agent) executeToolViaMCP(ctx context.Context, toolName string, args map[string]interface{}) (*ToolExecutionResult, error) {
@@ -2128,6 +2273,11 @@ func (a *Agent) executeToolViaMCP(ctx context.Context, toolName string, args map
 		zap.String("tool", toolName),
 		zap.Any("args", args),
 	)
+
+	// Check for duplicate scan before executing
+	if cached := a.toolRunDuplicateCheck(toolName, args); cached != nil {
+		return cached, nil
+	}
 
 	// If this is the record_vulnerability tool, automatically add conversation_id
 	if toolName == builtin.ToolRecordVulnerability {
