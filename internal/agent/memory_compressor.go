@@ -126,8 +126,12 @@ func NewMemoryCompressor(cfg MemoryCompressorConfig) (*MemoryCompressor, error) 
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = defaultSummaryTimeout
 	}
-	if cfg.SummaryModel == "" && cfg.OpenAIConfig != nil && cfg.OpenAIConfig.Model != "" {
-		cfg.SummaryModel = cfg.OpenAIConfig.Model
+	if cfg.SummaryModel == "" && cfg.OpenAIConfig != nil {
+		if cfg.OpenAIConfig.SummaryModel != "" {
+			cfg.SummaryModel = cfg.OpenAIConfig.SummaryModel
+		} else if cfg.OpenAIConfig.Model != "" {
+			cfg.SummaryModel = cfg.OpenAIConfig.Model
+		}
 	}
 	if cfg.SummaryModel == "" {
 		return nil, errors.New("summary model is required (either SummaryModel or OpenAIConfig.Model must be set)")
@@ -167,8 +171,10 @@ func (mc *MemoryCompressor) UpdateConfig(cfg *config.OpenAIConfig) {
 		return
 	}
 
-	// Update summaryModel field
-	if cfg.Model != "" {
+	// Update summaryModel field: prefer dedicated SummaryModel, fall back to main Model
+	if cfg.SummaryModel != "" {
+		mc.summaryModel = cfg.SummaryModel
+	} else if cfg.Model != "" {
 		mc.summaryModel = cfg.Model
 	}
 
@@ -176,7 +182,7 @@ func (mc *MemoryCompressor) UpdateConfig(cfg *config.OpenAIConfig) {
 	if openAIClient, ok := mc.completionClient.(*OpenAICompletionClient); ok {
 		openAIClient.UpdateConfig(cfg)
 		mc.logger.Info("MemoryCompressor config updated",
-			zap.String("model", cfg.Model),
+			zap.String("summary_model", mc.summaryModel),
 		)
 	}
 }
@@ -299,15 +305,19 @@ func (mc *MemoryCompressor) countMessageTokens(msg ChatMessage) int {
 	return total
 }
 
-// getModelName returns the name of the model currently in use (prefers the latest config from completionClient).
+// getModelName returns the name of the model currently in use for summarization.
 func (mc *MemoryCompressor) getModelName() string {
-	// If completionClient is an OpenAICompletionClient, get the latest model name from it
+	// summaryModel is always kept up-to-date by UpdateConfig;
+	// it reflects the dedicated summary model when set, or falls back to the main model.
+	if mc.summaryModel != "" {
+		return mc.summaryModel
+	}
+	// Last resort: read from the completion client config
 	if openAIClient, ok := mc.completionClient.(*OpenAICompletionClient); ok {
 		if openAIClient.config != nil && openAIClient.config.Model != "" {
 			return openAIClient.config.Model
 		}
 	}
-	// Otherwise use the saved summaryModel
 	return mc.summaryModel
 }
 

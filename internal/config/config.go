@@ -91,6 +91,8 @@ type OpenAIConfig struct {
 	APIKey         string `yaml:"api_key" json:"api_key"`
 	BaseURL        string `yaml:"base_url" json:"base_url"`
 	Model          string `yaml:"model" json:"model"`
+	ToolModel      string `yaml:"tool_model,omitempty" json:"tool_model,omitempty"`
+	SummaryModel   string `yaml:"summary_model,omitempty" json:"summary_model,omitempty"`
 	MaxTotalTokens int    `yaml:"max_total_tokens,omitempty" json:"max_total_tokens,omitempty"`
 }
 

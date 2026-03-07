@@ -1937,8 +1937,13 @@ func (a *Agent) callOpenAI(ctx context.Context, messages []ChatMessage, tools []
 
 // callOpenAISingle makes a single OpenAI API call (without retry logic)
 func (a *Agent) callOpenAISingle(ctx context.Context, messages []ChatMessage, tools []Tool) (*OpenAIResponse, error) {
+	model := a.config.Model
+	if len(tools) > 0 && a.config.ToolModel != "" {
+		model = a.config.ToolModel
+	}
+
 	reqBody := OpenAIRequest{
-		Model:    a.config.Model,
+		Model:    model,
 		Messages: messages,
 	}
 

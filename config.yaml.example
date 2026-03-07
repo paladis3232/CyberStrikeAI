@@ -42,6 +42,8 @@ openai:
   base_url: https://dashscope.aliyuncs.com/compatible-mode/v1 # API base URL (required)
   api_key: sk-your-api-key                                      # API key (required)
   model: qwen3-max                                             # Model name (required)
+  tool_model: ""                                                 # Separate model for tool-calling iterations (optional; uses main model if empty)
+  summary_model: ""                                              # Separate model for context summarization (optional; uses main model if empty)
   max_total_tokens: 120000              # Maximum token limit for LLM-related context (shared by memory compression and attack-chain building)
 
 # ============================================
