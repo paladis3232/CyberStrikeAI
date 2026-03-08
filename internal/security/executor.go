@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -20,11 +22,12 @@ import (
 
 // Executor security tool executor
 type Executor struct {
-	config        *config.SecurityConfig
-	toolIndex     map[string]*config.ToolConfig // tool index for O(1) lookup
-	mcpServer     *mcp.Server
-	logger        *zap.Logger
-	resultStorage ResultStorage // result storage (for query tools)
+	config         *config.SecurityConfig
+	toolIndex      map[string]*config.ToolConfig // tool index for O(1) lookup
+	mcpServer      *mcp.Server
+	logger         *zap.Logger
+	resultStorage  ResultStorage // result storage (for query tools)
+	defaultWorkDir string        // stable default working directory for tool execution
 }
 
 // ResultStorage result storage interface (directly using storage package types)
@@ -42,11 +45,12 @@ type ResultStorage interface {
 // NewExecutor creates a new executor
 func NewExecutor(cfg *config.SecurityConfig, mcpServer *mcp.Server, logger *zap.Logger) *Executor {
 	executor := &Executor{
-		config:        cfg,
-		toolIndex:     make(map[string]*config.ToolConfig),
-		mcpServer:     mcpServer,
-		logger:        logger,
-		resultStorage: nil, // set later via SetResultStorage
+		config:         cfg,
+		toolIndex:      make(map[string]*config.ToolConfig),
+		mcpServer:      mcpServer,
+		logger:         logger,
+		resultStorage:  nil, // set later via SetResultStorage
+		defaultWorkDir: detectDefaultToolWorkDir(),
 	}
 	// build tool index
 	executor.buildToolIndex()
@@ -139,10 +143,14 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 
 	// execute command
 	cmd := exec.CommandContext(ctx, toolConfig.Command, cmdArgs...)
+	if workDir := e.resolveToolWorkDir(args); workDir != "" {
+		cmd.Dir = workDir
+	}
 
 	e.logger.Info("executing security tool",
 		zap.String("tool", toolName),
 		zap.Strings("args", cmdArgs),
+		zap.String("workdir", cmd.Dir),
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -285,6 +293,9 @@ func (e *Executor) buildCommandArgs(toolName string, toolConfig *config.ToolConf
 		if scanType, ok := args["scan_type"].(string); ok && scanType != "" {
 			hasScanType = true
 			scanTypeValue = scanType
+			if toolName == "nmap" {
+				scanTypeValue = normalizeNmapScanType(scanType)
+			}
 		}
 
 		// add fixed arguments (may need to filter out default scan type args if scan_type is specified)
@@ -739,10 +750,31 @@ func (e *Executor) formatParamValue(param config.ParameterConfig, value interfac
 		// special handling: for the ports parameter (usually nmap and similar tools), remove spaces
 		// nmap doesn't accept spaces in port list, e.g. "80,443, 22" should become "80,443,22"
 		if param.Name == "ports" {
+			if strings.EqualFold(strings.TrimSpace(formattedValue), "common") {
+				// map friendly "common" alias used by prompts to a valid nmap port list
+				formattedValue = "21,22,23,25,53,80,110,143,443,445,993,995,1433,1521,3306,3389,5432,6379,8080,8443"
+			}
 			// remove all spaces but preserve commas and other characters
 			formattedValue = strings.ReplaceAll(formattedValue, " ", "")
 		}
 		return formattedValue
+	}
+}
+
+func normalizeNmapScanType(scanType string) string {
+	normalized := strings.TrimSpace(strings.ToLower(scanType))
+	switch normalized {
+	case "", "default":
+		return ""
+	case "fast":
+		return "-T4"
+	case "quick":
+		return "-T4 -F"
+	case "intensive":
+		return "-T4 -A"
+	default:
+		// keep raw custom flags (e.g. "-sV -Pn")
+		return scanType
 	}
 }
 
@@ -1029,10 +1061,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 	}
 
 	// get working directory (optional)
-	workDir := ""
-	if wd, ok := args["workdir"].(string); ok && wd != "" {
-		workDir = wd
-	}
+	workDir := e.resolveToolWorkDir(args)
 
 	// detect if this is a background command (contains & symbol, but not inside quotes)
 	isBackground := e.isBackgroundCommand(command)
@@ -1213,6 +1242,51 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 	}, nil
 }
 
+// resolveToolWorkDir resolves the tool working directory.
+// Priority: explicit args["workdir"] -> executor default workdir.
+func (e *Executor) resolveToolWorkDir(args map[string]interface{}) string {
+	base := e.defaultWorkDir
+	if wd, ok := args["workdir"].(string); ok && strings.TrimSpace(wd) != "" {
+		if filepath.IsAbs(wd) {
+			return filepath.Clean(wd)
+		}
+		if base == "" {
+			if cwd, err := os.Getwd(); err == nil {
+				base = cwd
+			}
+		}
+		if base != "" {
+			return filepath.Clean(filepath.Join(base, wd))
+		}
+		return filepath.Clean(wd)
+	}
+	return base
+}
+
+// detectDefaultToolWorkDir determines a stable workspace directory for tool execution.
+func detectDefaultToolWorkDir() string {
+	if env := strings.TrimSpace(os.Getenv("CYBERSTRIKE_WORKDIR")); env != "" {
+		if info, err := os.Stat(env); err == nil && info.IsDir() {
+			return env
+		}
+	}
+
+	if cwd, err := os.Getwd(); err == nil {
+		if info, statErr := os.Stat(cwd); statErr == nil && info.IsDir() {
+			return cwd
+		}
+	}
+
+	if exePath, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exePath)
+		if info, statErr := os.Stat(exeDir); statErr == nil && info.IsDir() {
+			return exeDir
+		}
+	}
+
+	return ""
+}
+
 // executeInternalTool executes an internal tool (does not execute external commands)
 func (e *Executor) executeInternalTool(ctx context.Context, toolName string, command string, args map[string]interface{}) (*mcp.ToolResult, error) {
 	// extract internal tool type (remove "internal:" prefix)
@@ -1292,76 +1366,90 @@ func (e *Executor) executeQueryExecutionResult(ctx context.Context, args map[str
 		useRegex = r
 	}
 
-	// check if result storage is available
-	if e.resultStorage == nil {
-		return &mcp.ToolResult{
-			Content: []mcp.Content{
-				{
-					Type: "text",
-					Text: "Error: result storage is not initialized",
-				},
-			},
-			IsError: true,
-		}, nil
-	}
-
-	// execute query
+	// execute query (prefer file storage; fallback to MCP execution record)
 	var resultPage *storage.ResultPage
-	var err error
+	var metadata *storage.ResultMetadata
+	var storageErr error
 
-	if search != "" {
-		// search mode
-		matchedLines, err := e.resultStorage.SearchResult(executionID, search, useRegex)
-		if err != nil {
-			return &mcp.ToolResult{
-				Content: []mcp.Content{
-					{
-						Type: "text",
-						Text: fmt.Sprintf("search failed: %v", err),
-					},
-				},
-				IsError: true,
-			}, nil
+	if e.resultStorage != nil {
+		if search != "" {
+			var matchedLines []string
+			matchedLines, storageErr = e.resultStorage.SearchResult(executionID, search, useRegex)
+			if storageErr == nil {
+				resultPage = paginateLines(matchedLines, page, limit)
+			}
+		} else if filter != "" {
+			var filteredLines []string
+			filteredLines, storageErr = e.resultStorage.FilterResult(executionID, filter, useRegex)
+			if storageErr == nil {
+				resultPage = paginateLines(filteredLines, page, limit)
+			}
+		} else {
+			resultPage, storageErr = e.resultStorage.GetResultPage(executionID, page, limit)
 		}
-		// paginate search results
-		resultPage = paginateLines(matchedLines, page, limit)
-	} else if filter != "" {
-		// filter mode
-		filteredLines, err := e.resultStorage.FilterResult(executionID, filter, useRegex)
-		if err != nil {
-			return &mcp.ToolResult{
-				Content: []mcp.Content{
-					{
-						Type: "text",
-						Text: fmt.Sprintf("filter failed: %v", err),
-					},
-				},
-				IsError: true,
-			}, nil
+		if storageErr == nil {
+			metadata, _ = e.resultStorage.GetResultMetadata(executionID)
 		}
-		// paginate filter results
-		resultPage = paginateLines(filteredLines, page, limit)
 	} else {
-		// normal paginated query
-		resultPage, err = e.resultStorage.GetResultPage(executionID, page, limit)
-		if err != nil {
-			return &mcp.ToolResult{
-				Content: []mcp.Content{
-					{
-						Type: "text",
-						Text: fmt.Sprintf("query failed: %v", err),
-					},
-				},
-				IsError: true,
-			}, nil
-		}
+		storageErr = fmt.Errorf("result storage not initialized")
 	}
 
-	// get metadata
-	metadata, err := e.resultStorage.GetResultMetadata(executionID)
-	if err != nil {
-		// metadata fetch failure does not affect query results
-		e.logger.Warn("failed to get result metadata", zap.Error(err))
+	if storageErr != nil {
+		e.logger.Warn("query_execution_result storage lookup failed, trying MCP execution fallback",
+			zap.String("executionID", executionID),
+			zap.Error(storageErr),
+		)
+		if e.mcpServer == nil {
+			return &mcp.ToolResult{
+				Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("query failed: %v", storageErr)}},
+				IsError: true,
+			}, nil
+		}
+
+		execRec, exists := e.mcpServer.GetExecution(executionID)
+		if !exists || execRec == nil {
+			return &mcp.ToolResult{
+				Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("query failed: %v", storageErr)}},
+				IsError: true,
+			}, nil
+		}
+
+		var sb strings.Builder
+		if execRec.Result != nil {
+			for _, content := range execRec.Result.Content {
+				sb.WriteString(content.Text)
+				sb.WriteString("\n")
+			}
+		}
+		if sb.Len() == 0 && execRec.Error != "" {
+			sb.WriteString(execRec.Error)
+		}
+		raw := sb.String()
+		if raw == "" {
+			raw = "(no output)"
+		}
+		lines := strings.Split(raw, "\n")
+		if search != "" {
+			matchedLines, ferr := filterLines(lines, search, useRegex)
+			if ferr != nil {
+				return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("search failed: %v", ferr)}}, IsError: true}, nil
+			}
+			resultPage = paginateLines(matchedLines, page, limit)
+		} else if filter != "" {
+			filteredLines, ferr := filterLines(lines, filter, useRegex)
+			if ferr != nil {
+				return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("filter failed: %v", ferr)}}, IsError: true}, nil
+			}
+			resultPage = paginateLines(filteredLines, page, limit)
+		} else {
+			resultPage = paginateLines(lines, page, limit)
+		}
+		metadata = &storage.ResultMetadata{
+			ExecutionID: executionID,
+			ToolName:    execRec.ToolName,
+			TotalSize:   len(raw),
+			TotalLines:  len(lines),
+		}
 	}
 
 	// format return result
@@ -1373,7 +1461,7 @@ func (e *Executor) executeQueryExecutionResult(ctx context.Context, args map[str
 			metadata.ToolName, metadata.TotalSize, float64(metadata.TotalSize)/1024, metadata.TotalLines))
 	}
 
-	sb.WriteString(fmt.Sprintf("page %d/%d, %d lines per page, total %d lines\n\n",
+	sb.WriteString(fmt.Sprintf("Page %d/%d, %d lines per page, total %d lines\n\n",
 		resultPage.Page, resultPage.TotalPages, resultPage.Limit, resultPage.TotalLines))
 
 	if len(resultPage.Lines) == 0 {
@@ -1445,6 +1533,30 @@ func paginateLines(lines []string, page int, limit int) *storage.ResultPage {
 		TotalLines: totalLines,
 		TotalPages: totalPages,
 	}
+}
+
+func filterLines(lines []string, pattern string, useRegex bool) ([]string, error) {
+	if !useRegex {
+		matched := make([]string, 0)
+		for _, line := range lines {
+			if strings.Contains(line, pattern) {
+				matched = append(matched, line)
+			}
+		}
+		return matched, nil
+	}
+
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("invalid regular expression: %w", err)
+	}
+	matched := make([]string, 0)
+	for _, line := range lines {
+		if re.MatchString(line) {
+			matched = append(matched, line)
+		}
+	}
+	return matched, nil
 }
 
 // buildInputSchema builds the input schema

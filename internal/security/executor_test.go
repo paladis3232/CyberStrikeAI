@@ -266,6 +266,56 @@ func TestPaginateLines(t *testing.T) {
 	}
 }
 
+func TestExecutor_FileTool_UsesResolvedWorkdir(t *testing.T) {
+	logger := zap.NewNop()
+	mcpServer := mcp.NewServer(logger)
+	cfg := &config.SecurityConfig{
+		Tools: []config.ToolConfig{
+			{
+				Name:    "create-file",
+				Command: "python3",
+				Args: []string{
+					"-c",
+					`import sys; from pathlib import Path; p = Path(sys.argv[1]); p.parent.mkdir(parents=True, exist_ok=True); p.write_text(sys.argv[2], encoding="utf-8"); print(p)`,
+				},
+				Enabled: true,
+				Parameters: []config.ParameterConfig{
+					{Name: "filename", Type: "string", Required: true, Position: intPtr(0), Format: "positional"},
+					{Name: "content", Type: "string", Required: true, Position: intPtr(1), Format: "positional"},
+				},
+			},
+		},
+	}
+
+	executor := NewExecutor(cfg, mcpServer, logger)
+	baseDir := t.TempDir()
+	executor.defaultWorkDir = baseDir
+	executor.buildToolIndex()
+
+	ctx := context.Background()
+	res, err := executor.ExecuteTool(ctx, "create-file", map[string]interface{}{
+		"filename": "a/b.txt",
+		"content":  "ok",
+	})
+	if err != nil {
+		t.Fatalf("ExecuteTool failed: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("tool returned error: %s", res.Content[0].Text)
+	}
+
+	outPath := filepath.Join(baseDir, "a", "b.txt")
+	data, readErr := os.ReadFile(outPath)
+	if readErr != nil {
+		t.Fatalf("expected file at %s, got error: %v", outPath, readErr)
+	}
+	if string(data) != "ok" {
+		t.Fatalf("unexpected content: %q", string(data))
+	}
+}
+
+func intPtr(v int) *int { return &v }
+
 func TestSanitizeFierceArgs_RemovesOrphanListFlags(t *testing.T) {
 	tests := []struct {
 		name     string
