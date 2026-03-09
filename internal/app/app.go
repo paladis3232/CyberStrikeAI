@@ -2523,6 +2523,12 @@ func registerCuttlefishTools(mcpServer *mcp.Server, cvdHome string, cvdCfg *conf
 			env = append(env, "CVD_DISK_MB="+strconv.Itoa(cvdCfg.DiskMB))
 		}
 
+		webrtcPort := cvdCfg.WebRTCPort
+		if webrtcPort == 0 {
+			webrtcPort = 8443
+		}
+		env = append(env, "CVD_WEBRTC_PORT="+strconv.Itoa(webrtcPort))
+
 		launchScript := filepath.Join(cvdHome, "cvd-launch.sh")
 		cmd := exec.CommandContext(ctx, launchScript)
 		cmd.Dir = cvdHome
@@ -2535,7 +2541,22 @@ func registerCuttlefishTools(mcpServer *mcp.Server, cvdHome string, cvdCfg *conf
 		if err != nil {
 			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "Launch failed: " + err.Error() + "\n" + out}}, IsError: true}, nil
 		}
-		return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: out}}}, nil
+
+		// Auto-open WebRTC viewer in browser so user can see and interact with the device
+		webrtcURL := "https://localhost:" + strconv.Itoa(webrtcPort)
+		go func() {
+			// Try xdg-open (Linux), then sensible-browser, then direct browsers
+			for _, opener := range []string{"xdg-open", "sensible-browser", "google-chrome", "firefox", "chromium-browser"} {
+				if path, err := exec.LookPath(opener); err == nil {
+					_ = exec.Command(path, webrtcURL).Start()
+					logger.Info("Opened Cuttlefish WebRTC viewer", zap.String("url", webrtcURL), zap.String("opener", opener))
+					return
+				}
+			}
+			logger.Warn("Could not auto-open browser for Cuttlefish WebRTC viewer — open manually", zap.String("url", webrtcURL))
+		}()
+
+		return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: out + "\nWebRTC viewer: " + webrtcURL + " (opening in browser...)"}}}, nil
 	})
 
 	// ── cuttlefish_stop ─────────────────────────────────────────────────

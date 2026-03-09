@@ -290,6 +290,8 @@ GPU="${CVD_GPU:-guest_swiftshader}"
 
 echo "[+] Launching Cuttlefish (${CPUS} CPUs, ${MEMORY}MB RAM, ${GPU} GPU)..."
 
+WEBRTC_PORT="${CVD_WEBRTC_PORT:-8443}"
+
 LAUNCH_ARGS=(
     -daemon
     --memory_mb="$MEMORY"
@@ -297,6 +299,7 @@ LAUNCH_ARGS=(
     --blank_data_image_mb="$DISK"
     --gpu_mode="$GPU"
     --start_webrtc=true
+    --webrtc_public_ip=localhost
     --setupwizard_mode=DISABLED
     --report_anonymous_usage_stats=n
     --use_overlay=true
@@ -321,8 +324,19 @@ for i in $(seq 1 180); do
         echo ""
         echo "[+] Cuttlefish is ready."
         echo "    ADB:    $SCRIPT_DIR/bin/adb shell"
-        echo "    WebRTC: https://localhost:8443"
+        WEBRTC_PORT="${CVD_WEBRTC_PORT:-8443}"
+        WEBRTC_URL="https://localhost:${WEBRTC_PORT}"
+        echo "    WebRTC: $WEBRTC_URL"
         echo "    Serial: $(./bin/adb devices | grep -v List | awk '{print $1}' | head -1)"
+
+        # Auto-open WebRTC viewer in browser for visual interaction
+        for opener in xdg-open sensible-browser google-chrome firefox chromium-browser; do
+            if command -v "$opener" &>/dev/null; then
+                "$opener" "$WEBRTC_URL" &>/dev/null &
+                echo "[+] Opened WebRTC viewer in browser ($opener)"
+                break
+            fi
+        done
         exit 0
     fi
     sleep 2
