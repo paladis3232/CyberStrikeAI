@@ -171,6 +171,8 @@ type AgentConfig struct {
 	TimeAwareness           TimeAwarenessConfig `yaml:"time_awareness" json:"time_awareness"`                         // Temporal context injection settings
 	Memory                  MemoryConfig        `yaml:"memory" json:"memory"`                                         // Persistent memory settings
 	FileManager             FileManagerConfig   `yaml:"file_manager" json:"file_manager"`                             // File manager settings
+	Cuttlefish              CuttlefishConfig    `yaml:"cuttlefish" json:"cuttlefish"`                                 // Android VM (Cuttlefish) settings
+	SSLStrip                SSLStripConfig      `yaml:"sslstrip" json:"sslstrip"`                                     // SSLStrip MITM tool settings
 }
 
 // TimeAwarenessConfig controls whether and how the agent injects time context.
@@ -189,6 +191,30 @@ type MemoryConfig struct {
 type FileManagerConfig struct {
 	Enabled    bool   `yaml:"enabled" json:"enabled"`         // Enable file manager (default true)
 	StorageDir string `yaml:"storage_dir" json:"storage_dir"` // Directory for managed file storage (default "managed_files")
+}
+
+// CuttlefishConfig controls the Cuttlefish Android VM integration.
+type CuttlefishConfig struct {
+	Enabled          bool   `yaml:"enabled" json:"enabled"`                       // Enable Cuttlefish tools (default true)
+	CvdHome          string `yaml:"cvd_home" json:"cvd_home"`                    // Cuttlefish workspace directory (default ~/cuttlefish-workspace)
+	MemoryMB         int    `yaml:"memory_mb" json:"memory_mb"`                  // VM RAM in MB (default 8192)
+	CPUs             int    `yaml:"cpus" json:"cpus"`                            // VM CPU count (default 4)
+	DiskMB           int    `yaml:"disk_mb" json:"disk_mb"`                      // Data partition size in MB (default 16000)
+	GPUMode          string `yaml:"gpu_mode" json:"gpu_mode"`                    // GPU mode: guest_swiftshader, drm_virgl (default guest_swiftshader)
+	AutoLaunch       bool   `yaml:"auto_launch" json:"auto_launch"`              // Auto-launch VM on server start (default false)
+	RussianIdentity  bool   `yaml:"russian_identity" json:"russian_identity"`    // Apply Russian phone identity on boot (default true)
+	WebRTCPort       int    `yaml:"webrtc_port" json:"webrtc_port"`              // WebRTC display port (default 8443)
+	DroidRunPath     string `yaml:"droidrun_path" json:"droidrun_path"`          // Path to DroidRun installation (default ~/droidrun)
+	DroidRunConfig   string `yaml:"droidrun_config" json:"droidrun_config"`      // Path to DroidRun config YAML (default <cvd_home>/droidrun/config.yaml)
+	BridgeScript     string `yaml:"bridge_script" json:"bridge_script"`          // Path to droidrun-bridge.py (auto-detected if empty)
+}
+
+// SSLStripConfig controls SSLStrip MITM tool integration.
+type SSLStripConfig struct {
+	Enabled    bool   `yaml:"enabled" json:"enabled"`           // Enable SSLStrip tool (default true)
+	ListenPort int    `yaml:"listen_port" json:"listen_port"`   // Default listen port (default 10000)
+	LogDir     string `yaml:"log_dir" json:"log_dir"`           // Directory for SSLStrip capture logs (default /tmp)
+	AutoProxy  bool   `yaml:"auto_proxy" json:"auto_proxy"`     // Auto-configure Cuttlefish proxy when SSLStrip starts (default false)
 }
 
 type AuthConfig struct {

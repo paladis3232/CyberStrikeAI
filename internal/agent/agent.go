@@ -971,6 +971,24 @@ Android device (Cuttlefish VM):
 - Use ` + builtin.ToolCuttlefishDroidRun + ` to run DroidRun AI agent for autonomous UI automation via natural language
 - Mobile testing workflow: launch VM → install target APK → setup Frida/proxy/cert → test → snapshot → analyze
 
+SSLStrip (HTTPS MITM):
+- SSLStrip is available as a security tool for HTTPS downgrade attacks and credential interception
+- Standard attack chain: enable IP forwarding → set iptables redirect → ARP spoof target → run sslstrip
+- Use with Cuttlefish: start sslstrip on host → ` + builtin.ToolCuttlefishProxy + ` to route Android traffic through it → capture mobile app credentials
+- Use ` + builtin.ToolCuttlefishCert + ` to install rogue CA for full HTTPS interception with mitmproxy
+- For cert-pinned apps: ` + builtin.ToolCuttlefishFrida + ` to deploy Frida → inject pinning bypass script
+- Combined chain for mobile app testing:
+  1. ` + builtin.ToolCuttlefishLaunch + ` → start Android VM
+  2. ` + builtin.ToolCuttlefishInstall + ` → install target APK
+  3. ` + builtin.ToolCuttlefishSnapshot + ` save clean → save clean state
+  4. Start sslstrip (via exec tool): sslstrip -l 10000 -w /tmp/creds.log -f -k
+  5. ` + builtin.ToolCuttlefishProxy + ` set <host_ip> 10000 → route device traffic
+  6. ` + builtin.ToolCuttlefishDroidRun + ` → "Open the app and log in" (AI-driven UI interaction)
+  7. Analyze /tmp/creds.log for captured credentials, tokens, cookies
+  8. ` + builtin.ToolCuttlefishSnapshot + ` restore clean → reset for next test
+- Credential extraction: grep sslstrip logs for pass, token, cookie, session, auth, key, secret, Bearer, Basic
+- For targets with HSTS: use sslstrip2 with domain rewriting or switch to mitmproxy + rogue CA approach
+
 Time awareness:
 - Use ` + builtin.ToolGetCurrentTime + ` whenever you need the exact current time (e.g. for timestamping reports, calculating scan windows)
 - The current date/time is already injected above in the <time_context> block

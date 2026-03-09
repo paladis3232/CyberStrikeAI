@@ -445,8 +445,31 @@ async function loadConfig(loadTools = true) {
             'agent-time-awareness-enabled': currentConfig.agent.time_awareness?.enabled !== false,
             'agent-memory-enabled': currentConfig.agent.memory?.enabled !== false,
             'agent-file-manager-enabled': currentConfig.agent.file_manager?.enabled !== false,
-            'agent-file-manager-storage-dir': currentConfig.agent.file_manager?.storage_dir || 'managed_files',
+            'agent-cuttlefish-enabled': currentConfig.agent.cuttlefish?.enabled !== false,
+            'agent-cuttlefish-auto-launch': currentConfig.agent.cuttlefish?.auto_launch === true,
+            'agent-cuttlefish-russian-identity': currentConfig.agent.cuttlefish?.russian_identity !== false,
+            'agent-sslstrip-enabled': currentConfig.agent.sslstrip?.enabled !== false,
+            'agent-sslstrip-auto-proxy': currentConfig.agent.sslstrip?.auto_proxy === true,
         };
+        // Cuttlefish text fields
+        const cvdFields = {
+            'agent-file-manager-storage-dir': currentConfig.agent.file_manager?.storage_dir || 'managed_files',
+            'agent-cuttlefish-cvd-home': currentConfig.agent.cuttlefish?.cvd_home || '',
+            'agent-cuttlefish-memory-mb': currentConfig.agent.cuttlefish?.memory_mb || 8192,
+            'agent-cuttlefish-cpus': currentConfig.agent.cuttlefish?.cpus || 4,
+            'agent-cuttlefish-disk-mb': currentConfig.agent.cuttlefish?.disk_mb || 16000,
+            'agent-cuttlefish-gpu-mode': currentConfig.agent.cuttlefish?.gpu_mode || 'guest_swiftshader',
+            'agent-cuttlefish-webrtc-port': currentConfig.agent.cuttlefish?.webrtc_port || 8443,
+            'agent-cuttlefish-droidrun-path': currentConfig.agent.cuttlefish?.droidrun_path || '',
+            'agent-cuttlefish-droidrun-config': currentConfig.agent.cuttlefish?.droidrun_config || '',
+            'agent-cuttlefish-bridge-script': currentConfig.agent.cuttlefish?.bridge_script || '',
+            'agent-sslstrip-listen-port': currentConfig.agent.sslstrip?.listen_port || 10000,
+            'agent-sslstrip-log-dir': currentConfig.agent.sslstrip?.log_dir || '/tmp',
+        };
+        for (const [id, val] of Object.entries(cvdFields)) {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        }
         for (const [id, val] of Object.entries(agentCheckboxes)) {
             const el = document.getElementById(id);
             if (el) el.checked = val;
@@ -1110,6 +1133,26 @@ async function applySettings() {
                 file_manager: {
                     enabled: document.getElementById('agent-file-manager-enabled')?.checked !== false,
                     storage_dir: document.getElementById('agent-file-manager-storage-dir')?.value.trim() || 'managed_files'
+                },
+                cuttlefish: {
+                    enabled: document.getElementById('agent-cuttlefish-enabled')?.checked !== false,
+                    cvd_home: document.getElementById('agent-cuttlefish-cvd-home')?.value.trim() || '',
+                    memory_mb: parseInt(document.getElementById('agent-cuttlefish-memory-mb')?.value) || 8192,
+                    cpus: parseInt(document.getElementById('agent-cuttlefish-cpus')?.value) || 4,
+                    disk_mb: parseInt(document.getElementById('agent-cuttlefish-disk-mb')?.value) || 16000,
+                    gpu_mode: document.getElementById('agent-cuttlefish-gpu-mode')?.value.trim() || 'guest_swiftshader',
+                    auto_launch: document.getElementById('agent-cuttlefish-auto-launch')?.checked === true,
+                    russian_identity: document.getElementById('agent-cuttlefish-russian-identity')?.checked !== false,
+                    webrtc_port: parseInt(document.getElementById('agent-cuttlefish-webrtc-port')?.value) || 8443,
+                    droidrun_path: document.getElementById('agent-cuttlefish-droidrun-path')?.value.trim() || '',
+                    droidrun_config: document.getElementById('agent-cuttlefish-droidrun-config')?.value.trim() || '',
+                    bridge_script: document.getElementById('agent-cuttlefish-bridge-script')?.value.trim() || ''
+                },
+                sslstrip: {
+                    enabled: document.getElementById('agent-sslstrip-enabled')?.checked !== false,
+                    listen_port: parseInt(document.getElementById('agent-sslstrip-listen-port')?.value) || 10000,
+                    log_dir: document.getElementById('agent-sslstrip-log-dir')?.value.trim() || '/tmp',
+                    auto_proxy: document.getElementById('agent-sslstrip-auto-proxy')?.checked === true
                 }
             },
             security: {

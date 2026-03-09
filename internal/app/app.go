@@ -207,11 +207,19 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 	}
 
 	// ── Cuttlefish (Android VM) tools ──────────────────────────────────────
-	cvdHome := os.Getenv("CVD_HOME")
-	if cvdHome == "" {
-		cvdHome = filepath.Join(os.Getenv("HOME"), "cuttlefish-workspace")
+	cvdCfg := cfg.Agent.Cuttlefish
+	if cvdCfg.Enabled {
+		cvdHome := cvdCfg.CvdHome
+		if cvdHome == "" {
+			cvdHome = os.Getenv("CVD_HOME")
+		}
+		if cvdHome == "" {
+			cvdHome = filepath.Join(os.Getenv("HOME"), "cuttlefish-workspace")
+		}
+		registerCuttlefishTools(mcpServer, cvdHome, &cvdCfg, log.Logger)
+	} else {
+		log.Logger.Info("cuttlefish tools disabled via config")
 	}
-	registerCuttlefishTools(mcpServer, cvdHome, log.Logger)
 
 	// initialize knowledge base module (if enabled)
 	var knowledgeManager *knowledge.Manager
@@ -2428,15 +2436,33 @@ func cvdADB(cvdHome string) string {
 	return "adb"
 }
 
-func registerCuttlefishTools(mcpServer *mcp.Server, cvdHome string, logger *zap.Logger) {
+func registerCuttlefishTools(mcpServer *mcp.Server, cvdHome string, cvdCfg *config.CuttlefishConfig, logger *zap.Logger) {
 	adb := cvdADB(cvdHome)
-	bridgeScript := filepath.Join(cvdHome, "..", "CyberStrikeAI", "scripts", "cuttlefish", "droidrun-bridge.py")
-	// Also try the absolute common path
-	if _, err := os.Stat(bridgeScript); err != nil {
-		bridgeScript = filepath.Join(os.Getenv("HOME"), "CyberStrikeAI", "scripts", "cuttlefish", "droidrun-bridge.py")
+
+	// Resolve DroidRun bridge script path from config or auto-detect
+	bridgeScript := cvdCfg.BridgeScript
+	if bridgeScript == "" {
+		bridgeScript = filepath.Join(cvdHome, "..", "CyberStrikeAI", "scripts", "cuttlefish", "droidrun-bridge.py")
+		if _, err := os.Stat(bridgeScript); err != nil {
+			bridgeScript = filepath.Join(os.Getenv("HOME"), "CyberStrikeAI", "scripts", "cuttlefish", "droidrun-bridge.py")
+		}
 	}
 
-	logger.Info("registering Cuttlefish (Android VM) MCP tools", zap.String("cvd_home", cvdHome), zap.String("adb", adb))
+	// Resolve DroidRun config path
+	droidrunCfgPath := cvdCfg.DroidRunConfig
+	if droidrunCfgPath == "" {
+		droidrunCfgPath = filepath.Join(cvdHome, "droidrun", "config.yaml")
+	}
+
+	logger.Info("registering Cuttlefish (Android VM) MCP tools",
+		zap.String("cvd_home", cvdHome),
+		zap.String("adb", adb),
+		zap.Int("memory_mb", cvdCfg.MemoryMB),
+		zap.Int("cpus", cvdCfg.CPUs),
+		zap.String("gpu_mode", cvdCfg.GPUMode),
+		zap.Bool("russian_identity", cvdCfg.RussianIdentity),
+		zap.String("bridge_script", bridgeScript),
+	)
 
 	// ── cuttlefish_launch ────────────────────────────────────────────────
 	mcpServer.RegisterTool(mcp.Tool{
@@ -2466,11 +2492,33 @@ func registerCuttlefishTools(mcpServer *mcp.Server, cvdHome string, logger *zap.
 		if fresh, ok := args["fresh"].(bool); ok && fresh {
 			env = append(env, "FRESH=1")
 		}
-		if mem, ok := args["memory_mb"].(float64); ok {
-			env = append(env, "CVD_MEMORY="+strconv.Itoa(int(mem)))
+		// Use config defaults, allow per-call override
+		mem := cvdCfg.MemoryMB
+		if mem == 0 {
+			mem = 8192
 		}
-		if cpus, ok := args["cpus"].(float64); ok {
-			env = append(env, "CVD_CPUS="+strconv.Itoa(int(cpus)))
+		if m, ok := args["memory_mb"].(float64); ok && int(m) > 0 {
+			mem = int(m)
+		}
+		env = append(env, "CVD_MEMORY="+strconv.Itoa(mem))
+
+		cpus := cvdCfg.CPUs
+		if cpus == 0 {
+			cpus = 4
+		}
+		if c, ok := args["cpus"].(float64); ok && int(c) > 0 {
+			cpus = int(c)
+		}
+		env = append(env, "CVD_CPUS="+strconv.Itoa(cpus))
+
+		gpuMode := cvdCfg.GPUMode
+		if gpuMode == "" {
+			gpuMode = "guest_swiftshader"
+		}
+		env = append(env, "CVD_GPU="+gpuMode)
+
+		if cvdCfg.DiskMB > 0 {
+			env = append(env, "CVD_DISK_MB="+strconv.Itoa(cvdCfg.DiskMB))
 		}
 
 		launchScript := filepath.Join(cvdHome, "cvd-launch.sh")
@@ -2965,8 +3013,10 @@ func registerCuttlefishTools(mcpServer *mcp.Server, cvdHome string, logger *zap.
 		if apk, ok := args["install_apk"].(string); ok && apk != "" {
 			cmdArgs = append(cmdArgs, "--install", apk)
 		}
-		if cfg, ok := args["config"].(string); ok && cfg != "" {
-			cmdArgs = append(cmdArgs, "--config", cfg)
+		if cfgPath, ok := args["config"].(string); ok && cfgPath != "" {
+			cmdArgs = append(cmdArgs, "--config", cfgPath)
+		} else if droidrunCfgPath != "" {
+			cmdArgs = append(cmdArgs, "--config", droidrunCfgPath)
 		}
 		cmdArgs = append(cmdArgs, goal)
 		out, err := cvdExec(ctx, cvdHome, "python3", cmdArgs...)

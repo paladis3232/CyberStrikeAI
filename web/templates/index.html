@@ -1556,6 +1556,110 @@
                                             <small class="form-hint">Directory for managed file storage (relative to CWD)</small>
                                         </div>
 
+                                        <!-- ── Cuttlefish Android VM ── -->
+                                        <div class="settings-subsection-header">
+                                            <h5>Android VM (Cuttlefish)</h5>
+                                            <small class="form-hint" style="font-weight:normal">AOSP virtual device on QEMU/KVM for mobile app testing, APK reversing, and traffic interception</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="agent-cuttlefish-enabled" class="modern-checkbox" />
+                                                <span class="checkbox-custom"></span>
+                                                <span class="checkbox-text">Enable Cuttlefish MCP tools</span>
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="agent-cuttlefish-cvd-home">Workspace Directory</label>
+                                            <input type="text" id="agent-cuttlefish-cvd-home" placeholder="~/cuttlefish-workspace" />
+                                            <small class="form-hint">Cuttlefish workspace (leave empty for ~/cuttlefish-workspace)</small>
+                                        </div>
+                                        <div class="form-row" style="display:flex;gap:12px">
+                                            <div class="form-group" style="flex:1">
+                                                <label for="agent-cuttlefish-memory-mb">RAM (MB)</label>
+                                                <input type="number" id="agent-cuttlefish-memory-mb" min="2048" max="65536" placeholder="8192" />
+                                            </div>
+                                            <div class="form-group" style="flex:1">
+                                                <label for="agent-cuttlefish-cpus">CPUs</label>
+                                                <input type="number" id="agent-cuttlefish-cpus" min="1" max="16" placeholder="4" />
+                                            </div>
+                                            <div class="form-group" style="flex:1">
+                                                <label for="agent-cuttlefish-disk-mb">Disk (MB)</label>
+                                                <input type="number" id="agent-cuttlefish-disk-mb" min="4000" max="128000" placeholder="16000" />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="agent-cuttlefish-gpu-mode">GPU Mode</label>
+                                            <select id="agent-cuttlefish-gpu-mode">
+                                                <option value="guest_swiftshader">Software (guest_swiftshader)</option>
+                                                <option value="drm_virgl">Hardware Accel (drm_virgl)</option>
+                                            </select>
+                                            <small class="form-hint">guest_swiftshader always works; drm_virgl requires host GPU support</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="agent-cuttlefish-webrtc-port">WebRTC Port</label>
+                                            <input type="number" id="agent-cuttlefish-webrtc-port" min="1024" max="65535" placeholder="8443" />
+                                            <small class="form-hint">Access VM display at https://localhost:&lt;port&gt;</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="agent-cuttlefish-auto-launch" class="modern-checkbox" />
+                                                <span class="checkbox-custom"></span>
+                                                <span class="checkbox-text">Auto-launch VM on server start</span>
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="agent-cuttlefish-russian-identity" class="modern-checkbox" checked />
+                                                <span class="checkbox-custom"></span>
+                                                <span class="checkbox-text">Apply Russian phone identity (Xiaomi, MTS, Moscow TZ, ru-RU)</span>
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="agent-cuttlefish-droidrun-path">DroidRun Path</label>
+                                            <input type="text" id="agent-cuttlefish-droidrun-path" placeholder="~/droidrun" />
+                                            <small class="form-hint">DroidRun installation directory (leave empty for ~/droidrun)</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="agent-cuttlefish-droidrun-config">DroidRun Config</label>
+                                            <input type="text" id="agent-cuttlefish-droidrun-config" placeholder="" />
+                                            <small class="form-hint">Custom DroidRun config YAML (leave empty for default)</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="agent-cuttlefish-bridge-script">Bridge Script</label>
+                                            <input type="text" id="agent-cuttlefish-bridge-script" placeholder="" />
+                                            <small class="form-hint">Path to droidrun-bridge.py (auto-detected if empty)</small>
+                                        </div>
+
+                                        <!-- ── SSLStrip MITM ── -->
+                                        <div class="settings-subsection-header">
+                                            <h5>SSLStrip (HTTPS MITM)</h5>
+                                            <small class="form-hint" style="font-weight:normal">HTTPS stripping for credential interception — works standalone or with Cuttlefish VM</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="agent-sslstrip-enabled" class="modern-checkbox" />
+                                                <span class="checkbox-custom"></span>
+                                                <span class="checkbox-text">Enable SSLStrip tool</span>
+                                            </label>
+                                        </div>
+                                        <div class="form-row" style="display:flex;gap:12px">
+                                            <div class="form-group" style="flex:1">
+                                                <label for="agent-sslstrip-listen-port">Listen Port</label>
+                                                <input type="number" id="agent-sslstrip-listen-port" min="1024" max="65535" placeholder="10000" />
+                                            </div>
+                                            <div class="form-group" style="flex:1">
+                                                <label for="agent-sslstrip-log-dir">Log Directory</label>
+                                                <input type="text" id="agent-sslstrip-log-dir" placeholder="/tmp" />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="agent-sslstrip-auto-proxy" class="modern-checkbox" />
+                                                <span class="checkbox-custom"></span>
+                                                <span class="checkbox-text">Auto-configure Cuttlefish proxy when SSLStrip starts</span>
+                                            </label>
+                                        </div>
+
                                         <div class="settings-subsection-header">
                                             <h5>Tool Settings</h5>
                                         </div>
