@@ -452,6 +452,7 @@ async function loadConfig(loadTools = true) {
             'agent-cuttlefish-vision-enabled': currentConfig.agent.cuttlefish?.vision_enabled !== false,
             'agent-sslstrip-enabled': currentConfig.agent.sslstrip?.enabled !== false,
             'agent-sslstrip-auto-proxy': currentConfig.agent.sslstrip?.auto_proxy === true,
+            'ghidra-mcp-enabled': currentConfig.external_mcp?.servers?.['ghidra-headless-mcp']?.external_mcp_enable === true,
         };
         // Cuttlefish text fields
         const cvdFields = {
@@ -469,6 +470,8 @@ async function loadConfig(loadTools = true) {
             'agent-cuttlefish-screenshot-dir': currentConfig.agent.cuttlefish?.screenshot_dir || '/tmp/droidrun_screenshots',
             'agent-sslstrip-listen-port': currentConfig.agent.sslstrip?.listen_port || 10000,
             'agent-sslstrip-log-dir': currentConfig.agent.sslstrip?.log_dir || '/tmp',
+            'ghidra-install-dir': currentConfig.external_mcp?.servers?.['ghidra-headless-mcp']?.env?.GHIDRA_INSTALL_DIR || '',
+            'ghidra-mcp-home': currentConfig.external_mcp?.servers?.['ghidra-headless-mcp']?.env?.GHIDRA_MCP_HOME || '',
         };
         for (const [id, val] of Object.entries(cvdFields)) {
             const el = document.getElementById(id);
@@ -1195,6 +1198,18 @@ async function applySettings() {
             tools: []
         };
         
+        // Update Ghidra Headless MCP external server config
+        if (!config.external_mcp) config.external_mcp = {};
+        if (!config.external_mcp.servers) config.external_mcp.servers = {};
+        const ghidraServer = config.external_mcp.servers['ghidra-headless-mcp'] || {};
+        ghidraServer.external_mcp_enable = document.getElementById('ghidra-mcp-enabled')?.checked === true;
+        if (!ghidraServer.env) ghidraServer.env = {};
+        const ghidraDir = document.getElementById('ghidra-install-dir')?.value.trim() || '';
+        const ghidraMcpHome = document.getElementById('ghidra-mcp-home')?.value.trim() || '';
+        if (ghidraDir) ghidraServer.env.GHIDRA_INSTALL_DIR = ghidraDir;
+        if (ghidraMcpHome) ghidraServer.env.GHIDRA_MCP_HOME = ghidraMcpHome;
+        config.external_mcp.servers['ghidra-headless-mcp'] = ghidraServer;
+
         // Collect tool enabled status
         // Save current page status to global map first
         saveCurrentPageToolStates();

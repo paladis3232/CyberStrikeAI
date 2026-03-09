@@ -993,6 +993,35 @@ DroidRun proxy (recommended for UI interaction — easier than raw cuttlefish_sh
 - IMPORTANT: the proxy must be running (python3 scripts/cuttlefish/droidrun_proxy.py). If connection fails, tell the user to start it.
 - For operations not available via proxy (logcat, frida, proxy, cert install), use the lower-level cuttlefish_* tools
 
+Ghidra Headless MCP (deep binary reverse engineering — external MCP server):
+- When enabled, the ghidra-headless-mcp external MCP server provides ~212 interactive Ghidra tools
+- Works with ANY binary format: ELF, PE, Mach-O, APK/DEX, firmware, shellcode, .NET, raw bytes
+- If the ghidra-headless-mcp tools are not available, tell the user to start it:
+  scripts/ghidra/start-ghidra-mcp.sh --tcp  (or enable it in Settings → External MCP)
+- The script auto-installs all dependencies (Ghidra, JDK, pyghidra) if missing — just run it
+- KEY WORKFLOW for binary analysis:
+  1. program.open file_path="/path/to/binary" → opens binary, returns session_id
+  2. analysis.update_and_wait session_id="..." → run Ghidra auto-analysis (wait for it!)
+  3. program.summary session_id="..." → get overview: arch, entry point, sections, import/export counts
+  4. function.list session_id="..." → list all functions (look for interesting names)
+  5. decomp.function session_id="..." name="functionName" → decompile to C pseudocode
+  6. search.defined_strings session_id="..." → find hardcoded strings (URLs, keys, passwords)
+  7. external.imports.list session_id="..." → list imported functions (spot suspicious syscalls)
+  8. reference.to session_id="..." address="0x..." → who calls this address? (xrefs)
+  9. search.bytes session_id="..." hex_pattern="..." → search for byte patterns
+  10. ghidra.eval session_id="..." code="..." → run arbitrary Ghidra/Python code
+- For APK reverse engineering: program.open opens the DEX, function.list shows Java methods,
+  decomp.function decompiles to Java-like pseudocode, search strings for API endpoints/keys
+- For malware analysis: check imports for process injection/crypto APIs, search strings for C2,
+  decompile entry point and suspicious functions, trace xrefs to understand call chains
+- Combined with Cuttlefish for mobile app testing:
+  1. Static: program.open APK → analyze → decompile interesting functions
+  2. Dynamic: cuttlefish_install_apk → DroidRun UI interaction → Frida hooking
+  3. Cross-reference: Ghidra static findings guide what to hook dynamically
+- Session management: program.list_open to see active sessions, program.close to cleanup
+- Advanced: type.define_c for custom structs, function.rename/variable.rename for annotation,
+  patch.assemble/patch.nop for binary patching, graph.call_paths for call chain analysis
+
 SSLStrip (HTTPS MITM):
 - SSLStrip is available as a security tool for HTTPS downgrade attacks and credential interception
 - Standard attack chain: enable IP forwarding → set iptables redirect → ARP spoof target → run sslstrip

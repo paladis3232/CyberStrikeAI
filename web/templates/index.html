@@ -1689,6 +1689,33 @@
                                         </div>
 
                                         <div class="settings-subsection-header">
+                                            <h5>Ghidra Headless MCP (Binary Analysis)</h5>
+                                            <small class="form-hint" style="font-weight:normal">Standalone MCP server — ~212 Ghidra reverse engineering tools. Supports ELF, PE, APK/DEX, firmware, any binary.</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="ghidra-mcp-enabled" class="modern-checkbox" />
+                                                <span class="checkbox-custom"></span>
+                                                <span class="checkbox-text">Enable Ghidra Headless MCP (auto-start as external MCP server)</span>
+                                            </label>
+                                        </div>
+                                        <div class="form-row" style="display:flex;gap:12px">
+                                            <div class="form-group" style="flex:1">
+                                                <label for="ghidra-install-dir">Ghidra Install Directory</label>
+                                                <input type="text" id="ghidra-install-dir" placeholder="/opt/ghidra (auto-detected)" />
+                                                <small class="form-hint">Path to Ghidra installation. Leave blank for auto-detection.</small>
+                                            </div>
+                                            <div class="form-group" style="flex:1">
+                                                <label for="ghidra-mcp-home">ghidra-headless-mcp Path</label>
+                                                <input type="text" id="ghidra-mcp-home" placeholder="~/ghidra-headless-mcp" />
+                                                <small class="form-hint">Path to ghidra-headless-mcp repo. Auto-cloned if missing.</small>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <small class="form-hint">Start manually: <code>scripts/ghidra/start-ghidra-mcp.sh --tcp</code> — auto-installs all deps (Ghidra, JDK, pyghidra)</small>
+                                        </div>
+
+                                        <div class="settings-subsection-header">
                                             <h5>Tool Settings</h5>
                                         </div>
                                         <div class="form-group">
