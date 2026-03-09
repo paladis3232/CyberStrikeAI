@@ -173,6 +173,7 @@ type AgentConfig struct {
 	FileManager             FileManagerConfig   `yaml:"file_manager" json:"file_manager"`                             // File manager settings
 	Cuttlefish              CuttlefishConfig    `yaml:"cuttlefish" json:"cuttlefish"`                                 // Android VM (Cuttlefish) settings
 	SSLStrip                SSLStripConfig      `yaml:"sslstrip" json:"sslstrip"`                                     // SSLStrip MITM tool settings
+	ToolTimeout             int                 `yaml:"tool_timeout" json:"tool_timeout"`                             // Per-tool execution timeout in seconds (default 300 = 5 min)
 }
 
 // TimeAwarenessConfig controls whether and how the agent injects time context.

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os/exec"
 	"sort"
 	"strings"
 	"sync"
@@ -616,7 +617,12 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 			return
 		}
 		// Use tool_run category specifically for tool pool state snapshots.
-		_, _ = pm.Store(key, value, MemoryCategoryToolRun, conversationID)
+		if _, storeErr := pm.Store(key, value, MemoryCategoryToolRun, conversationID); storeErr != nil {
+			a.logger.Warn("Failed to persist tool pool state to memory",
+				zap.String("key", key),
+				zap.Error(storeErr),
+			)
+		}
 	}
 
 	buildToolIssueSummary := func(isError bool, errorText, result string) string {
@@ -1324,6 +1330,99 @@ Skills Library:
 		}
 	}
 
+	// ── Pre-flight health checks ──────────────────────────────────────────
+	// Verify LLM connectivity, external MCP servers, and key tool binaries
+	// before entering the agent loop. Report results to UI.
+	{
+		type healthItem struct {
+			Component string `json:"component"`
+			Status    string `json:"status"` // "ok", "warn", "error"
+			Detail    string `json:"detail,omitempty"`
+		}
+		var checks []healthItem
+
+		// 1. LLM connectivity check
+		if a.openAIClient == nil {
+			checks = append(checks, healthItem{"LLM (main)", "error", "client not initialized"})
+		} else if a.config == nil || strings.TrimSpace(a.config.APIKey) == "" {
+			checks = append(checks, healthItem{"LLM (main)", "error", "API key not configured"})
+		} else {
+			checks = append(checks, healthItem{"LLM (main)", "ok", fmt.Sprintf("model=%s base=%s", a.config.Model, a.config.BaseURL)})
+		}
+
+		// 2. External MCP server status
+		if a.externalMCPMgr != nil {
+			configs := a.externalMCPMgr.GetConfigs()
+			for name, cfg := range configs {
+				if !cfg.ExternalMCPEnable {
+					continue // skip disabled servers
+				}
+				client, exists := a.externalMCPMgr.GetClient(name)
+				if !exists {
+					errMsg := a.externalMCPMgr.GetError(name)
+					if errMsg == "" {
+						errMsg = "client not created"
+					}
+					checks = append(checks, healthItem{"MCP:" + name, "error", errMsg})
+				} else if !client.IsConnected() {
+					errMsg := a.externalMCPMgr.GetError(name)
+					status := "warn"
+					detail := "connecting..."
+					if errMsg != "" {
+						status = "error"
+						detail = errMsg
+					}
+					checks = append(checks, healthItem{"MCP:" + name, status, detail})
+				} else {
+					toolCount, _ := a.externalMCPMgr.GetToolCount(name)
+					checks = append(checks, healthItem{"MCP:" + name, "ok", fmt.Sprintf("%d tools available", toolCount)})
+				}
+			}
+		}
+
+		// 3. Internal MCP server
+		if a.mcpServer != nil {
+			internalTools := a.mcpServer.GetAllTools()
+			checks = append(checks, healthItem{"MCP (internal)", "ok", fmt.Sprintf("%d tools registered", len(internalTools))})
+		} else {
+			checks = append(checks, healthItem{"MCP (internal)", "error", "server not initialized"})
+		}
+
+		// 4. Key tool binary availability (spot-check common tools on PATH)
+		keyBinaries := []string{"nmap", "python3", "curl"}
+		for _, bin := range keyBinaries {
+			if _, err := exec.LookPath(bin); err != nil {
+				checks = append(checks, healthItem{"Binary:" + bin, "warn", "not found on PATH"})
+			} else {
+				checks = append(checks, healthItem{"Binary:" + bin, "ok", ""})
+			}
+		}
+
+		// Determine overall status
+		overallStatus := "ok"
+		hasErrors := false
+		for _, c := range checks {
+			if c.Status == "error" {
+				overallStatus = "error"
+				hasErrors = true
+				break
+			}
+			if c.Status == "warn" {
+				overallStatus = "warn"
+			}
+		}
+
+		sendProgress("health_check", fmt.Sprintf("Pre-flight check: %s (%d components verified)", overallStatus, len(checks)), map[string]interface{}{
+			"status": overallStatus,
+			"checks": checks,
+		})
+
+		// If LLM is not available, abort early — nothing else can work
+		if hasErrors && (a.openAIClient == nil || a.config == nil || strings.TrimSpace(a.config.APIKey) == "") {
+			return nil, fmt.Errorf("pre-flight check failed: LLM not configured — cannot proceed")
+		}
+	}
+
 	// Used to save current messages so ReAct input can be saved even in abnormal situations
 	var currentReActInput string
 
@@ -1336,7 +1435,14 @@ Skills Library:
 		// First get available tools for this round and count tools tokens, then compress, to reserve space for tools during compression
 		tools := a.getAvailableTools(ctx, roleTools)
 		toolsTokens := a.countToolsTokens(tools)
+		msgCountBefore := len(messages)
 		messages = a.applyMemoryCompression(ctx, messages, toolsTokens)
+		if len(messages) < msgCountBefore {
+			sendProgress("compression", fmt.Sprintf("Context compressed: %d → %d messages to fit token limit", msgCountBefore, len(messages)), map[string]interface{}{
+				"before": msgCountBefore,
+				"after":  len(messages),
+			})
+		}
 		if poolContext := buildToolPoolContext(); poolContext != "" {
 			messages = append(messages, ChatMessage{
 				Role:    "user",
@@ -1712,6 +1818,7 @@ Skills Library:
 						execErr    error
 					}
 					seqDone := make(chan seqOutcome, 1)
+					toolStartTime := time.Now()
 					go func() {
 						r, e := a.executeToolViaMCP(ctx, toolCall.Function.Name, toolCall.Function.Arguments)
 						seqDone <- seqOutcome{execResult: r, execErr: e}
@@ -1819,6 +1926,7 @@ Skills Library:
 							errText = resultPreview
 						}
 						updateToolPool(toolCall.ID, toolCall.Function.Name, status, execResult.ExecutionID, resultPreview, execResult.Result, errText, toolCall.Function.Arguments, execResult.IsError)
+						toolDuration := time.Since(toolStartTime)
 						sendProgress("tool_result", fmt.Sprintf("Tool %s execution completed", toolCall.Function.Name), map[string]interface{}{
 							"toolName":      toolCall.Function.Name,
 							"success":       !execResult.IsError,
@@ -1830,6 +1938,7 @@ Skills Library:
 							"index":         idx + 1,
 							"total":         totalTools,
 							"iteration":     i + 1,
+							"duration_ms":   toolDuration.Milliseconds(),
 						})
 
 						// If the tool returned an error, log it but do not interrupt the flow
@@ -1853,8 +1962,12 @@ Skills Library:
 				})
 				messages = a.applyMemoryCompression(ctx, messages, 0) // No tools during summary, no reservation
 				// Call OpenAI immediately to get summary
-				summaryResponse, err := a.callOpenAI(ctx, messages, []Tool{}) // No tools provided, forcing AI to reply directly
-				if err == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
+				summaryResponse, summaryErr := a.callOpenAI(ctx, messages, []Tool{}) // No tools provided, forcing AI to reply directly
+				if summaryErr != nil {
+					a.logger.Warn("Summary generation LLM call failed", zap.Error(summaryErr))
+					sendProgress("warning", fmt.Sprintf("Summary generation failed: %v", summaryErr), nil)
+				}
+				if summaryErr == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
 					summaryChoice := summaryResponse.Choices[0]
 					if summaryChoice.Message.Content != "" {
 						result.Response = summaryChoice.Message.Content
@@ -1893,8 +2006,12 @@ Skills Library:
 			})
 			messages = a.applyMemoryCompression(ctx, messages, 0) // No tools during summary, no reservation
 			// Call OpenAI immediately to get summary
-			summaryResponse, err := a.callOpenAI(ctx, messages, []Tool{}) // No tools provided, forcing AI to reply directly
-			if err == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
+			summaryResponse, summaryErr := a.callOpenAI(ctx, messages, []Tool{}) // No tools provided, forcing AI to reply directly
+			if summaryErr != nil {
+				a.logger.Warn("Summary generation LLM call failed (last iteration)", zap.Error(summaryErr))
+				sendProgress("warning", fmt.Sprintf("Summary generation failed: %v", summaryErr), nil)
+			}
+			if summaryErr == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
 				summaryChoice := summaryResponse.Choices[0]
 				if summaryChoice.Message.Content != "" {
 					result.Response = summaryChoice.Message.Content
@@ -1942,8 +2059,12 @@ Skills Library:
 	messages = append(messages, finalSummaryPrompt)
 	messages = a.applyMemoryCompression(ctx, messages, 0) // No tools during summary, no reservation
 
-	summaryResponse, err := a.callOpenAI(ctx, messages, []Tool{}) // No tools provided, forcing AI to reply directly
-	if err == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
+	summaryResponse, summaryErr := a.callOpenAI(ctx, messages, []Tool{}) // No tools provided, forcing AI to reply directly
+	if summaryErr != nil {
+		a.logger.Warn("Final summary generation LLM call failed", zap.Error(summaryErr))
+		sendProgress("warning", fmt.Sprintf("Final summary generation failed: %v", summaryErr), nil)
+	}
+	if summaryErr == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
 		summaryChoice := summaryResponse.Choices[0]
 		if summaryChoice.Message.Content != "" {
 			result.Response = summaryChoice.Message.Content
@@ -2826,6 +2947,14 @@ func (a *Agent) executeToolViaMCP(ctx context.Context, toolName string, args map
 	var executionID string
 	var err error
 
+	// Apply per-tool timeout (default 5 min) to guard against hung tools
+	toolTimeout := 5 * time.Minute
+	if a.agentConfig != nil && a.agentConfig.ToolTimeout > 0 {
+		toolTimeout = time.Duration(a.agentConfig.ToolTimeout) * time.Second
+	}
+	toolCtx, toolCancel := context.WithTimeout(ctx, toolTimeout)
+	defer toolCancel()
+
 	// Check if this is an external MCP tool (via tool name mapping)
 	a.mu.RLock()
 	originalToolName, isExternalTool := a.toolNameMapping[toolName]
@@ -2837,18 +2966,27 @@ func (a *Agent) executeToolViaMCP(ctx context.Context, toolName string, args map
 			zap.String("openAIName", toolName),
 			zap.String("originalName", originalToolName),
 		)
-		result, executionID, err = a.externalMCPMgr.CallTool(ctx, originalToolName, args)
+		result, executionID, err = a.externalMCPMgr.CallTool(toolCtx, originalToolName, args)
 	} else {
 		// Call internal MCP tool
-		result, executionID, err = a.mcpServer.CallTool(ctx, toolName, args)
+		result, executionID, err = a.mcpServer.CallTool(toolCtx, toolName, args)
 	}
 
-	// If call fails (e.g. tool doesn't exist), return a friendly error message rather than throwing an exception
+	// If call fails, determine if it's a transient error (retryable) or permanent
 	if err != nil {
+		errStr := err.Error()
+		isTransient := strings.Contains(errStr, "connection refused") ||
+			strings.Contains(errStr, "connection reset") ||
+			strings.Contains(errStr, "i/o timeout") ||
+			strings.Contains(errStr, "deadline exceeded") ||
+			strings.Contains(errStr, "broken pipe") ||
+			strings.Contains(errStr, "EOF") ||
+			strings.Contains(errStr, "temporarily unavailable")
+
 		errorMsg := fmt.Sprintf(`Tool call failed
 
 Tool name: %s
-Error type: system error
+Error type: %s
 Error details: %v
 
 Possible causes:
@@ -2859,13 +2997,27 @@ Possible causes:
 Suggestions:
 - Check if the tool name is correct
 - Try using an alternative tool
-- If this tool is required, explain the situation to the user`, toolName, err, toolName)
+- If this tool is required, explain the situation to the user`, toolName, func() string {
+			if isTransient {
+				return "transient error (will retry)"
+			}
+			return "system error"
+		}(), err, toolName)
+
+		if isTransient {
+			// Return Go-level error so the retry loop in parallel/sequential execution can retry
+			return &ToolExecutionResult{
+				Result:      errorMsg,
+				ExecutionID: executionID,
+				IsError:     true,
+			}, fmt.Errorf("transient tool error: %w", err)
+		}
 
 		return &ToolExecutionResult{
 			Result:      errorMsg,
 			ExecutionID: executionID,
 			IsError:     true,
-		}, nil // Return nil error, let caller handle the result
+		}, nil // Permanent error — let caller handle the result, no retry
 	}
 
 	// Format result
@@ -3065,6 +3217,9 @@ func (a *Agent) applyMemoryCompression(ctx context.Context, messages []ChatMessa
 			zap.Int("originalMessages", len(messages)),
 			zap.Int("compressedMessages", len(compressed)),
 		)
+		// Note: sendProgress is not accessible here (it's a local closure in RunTask).
+		// The compression event is logged and will be visible in server logs.
+		// For UI visibility, the caller should check if compression happened.
 		return compressed
 	}
 

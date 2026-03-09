@@ -729,6 +729,23 @@ func setupRoutes(
 	// API routes
 	api := router.Group("/api")
 
+	// Health endpoint (no auth required)
+	api.GET("/health", func(c *gin.Context) {
+		health := gin.H{
+			"status": "ok",
+			"time":   time.Now().UTC().Format(time.RFC3339),
+		}
+		// External MCP stats
+		if app.externalMCPMgr != nil {
+			health["external_mcp"] = app.externalMCPMgr.GetStats()
+		}
+		// Internal MCP tool count
+		if app.mcpServer != nil {
+			health["internal_tools"] = len(app.mcpServer.GetAllTools())
+		}
+		c.JSON(http.StatusOK, health)
+	})
+
 	// authentication routes
 	authRoutes := api.Group("/auth")
 	{
