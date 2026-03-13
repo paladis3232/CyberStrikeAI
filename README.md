@@ -4,62 +4,62 @@
 
 # CyberStrikeAI
 
+CyberStrikeAI — это **AI-нативная платформа для тестирования безопасности**, написанная на Go. Объединяет 116+ инструментов безопасности, интеллектуальный оркестратор, ролевое тестирование, систему навыков и полное управление жизненным циклом. Через нативный MCP-протокол и AI-агентов обеспечивает сквозную автоматизацию от диалогового интерфейса до обнаружения уязвимостей, анализа цепочек атак, работы с базой знаний и визуализации результатов.
 
-CyberStrikeAI is an **AI-native security testing platform** built in Go. It integrates 100+ security tools, an intelligent orchestration engine, role-based testing with predefined security roles, a skills system with specialized testing skills, and comprehensive lifecycle management capabilities. Through native MCP protocol and AI agents, it enables end-to-end automation from conversational commands to vulnerability discovery, attack-chain analysis, knowledge retrieval, and result visualization—delivering an auditable, traceable, and collaborative testing environment for security teams.
+---
 
-
-## Interface & Integration Preview
+## Интерфейс и интеграции
 
 <div align="center">
 
-### System Dashboard Overview
+### Дашборд системы
 
 <img src="./images/dashboard.png" alt="System Dashboard" width="100%">
 
-*The dashboard provides a comprehensive overview of system runtime status, security vulnerabilities, tool usage, and knowledge base, helping users quickly understand the platform's core features and current state.*
+*Дашборд даёт полный обзор состояния системы: уязвимости, использование инструментов, база знаний — всё в одном месте.*
 
-### Core Features Overview
+### Основные возможности
 
 <table>
 <tr>
 <td width="33.33%" align="center">
-<strong>Web Console</strong><br/>
+<strong>Веб-консоль</strong><br/>
 <img src="./images/web-console.png" alt="Web Console" width="100%">
 </td>
 <td width="33.33%" align="center">
-<strong>Attack Chain Visualization</strong><br/>
+<strong>Цепочка атаки</strong><br/>
 <img src="./images/attack-chain.png" alt="Attack Chain" width="100%">
 </td>
 <td width="33.33%" align="center">
-<strong>Task Management</strong><br/>
+<strong>Управление задачами</strong><br/>
 <img src="./images/task-management.png" alt="Task Management" width="100%">
 </td>
 </tr>
 <tr>
 <td width="33.33%" align="center">
-<strong>Vulnerability Management</strong><br/>
+<strong>Уязвимости</strong><br/>
 <img src="./images/vulnerability-management.png" alt="Vulnerability Management" width="100%">
 </td>
 <td width="33.33%" align="center">
-<strong>MCP Management</strong><br/>
+<strong>MCP управление</strong><br/>
 <img src="./images/mcp-management.png" alt="MCP management" width="100%">
 </td>
 <td width="33.33%" align="center">
-<strong>MCP stdio Mode</strong><br/>
+<strong>MCP stdio</strong><br/>
 <img src="./images/mcp-stdio2.png" alt="MCP stdio mode" width="100%">
 </td>
 </tr>
 <tr>
 <td width="33.33%" align="center">
-<strong>Knowledge Base</strong><br/>
+<strong>База знаний</strong><br/>
 <img src="./images/knowledge-base.png" alt="Knowledge Base" width="100%">
 </td>
 <td width="33.33%" align="center">
-<strong>Skills Management</strong><br/>
+<strong>Навыки</strong><br/>
 <img src="./images/skills.png" alt="Skills Management" width="100%">
 </td>
 <td width="33.33%" align="center">
-<strong>Role Management</strong><br/>
+<strong>Роли</strong><br/>
 <img src="./images/role-management.png" alt="Role Management" width="100%">
 </td>
 </tr>
@@ -67,425 +67,153 @@ CyberStrikeAI is an **AI-native security testing platform** built in Go. It inte
 
 </div>
 
-## Highlights
+---
 
-- 🤖 AI decision engine with OpenAI-compatible models (GPT, Claude, DeepSeek, etc.)
-- 🔌 Native MCP implementation with HTTP/stdio/SSE transports and external MCP federation
-- 🧰 100+ prebuilt tool recipes + YAML-based extension system
-- 📄 Large-result pagination, compression, and searchable archives
-- 🔗 Attack-chain graph, risk scoring, and step-by-step replay
-- 🔒 Password-protected web UI, audit logs, and SQLite persistence
-- 📚 Knowledge base with vector search and **corpus-level BM25 hybrid retrieval** for security expertise
-- 🧠 **Persistent memory**: key-value store that survives conversation compression and server restarts — agents remember credentials, targets, and findings across sessions; tool results are automatically stored as memory entries
-- 🔍 **Agent introspection**: before every major action the agent automatically retrieves similar memory entries and pre-fetches relevant knowledge-base guidance to avoid duplicate work and improve tool selection
-- ⏰ **Time awareness**: current date/time is automatically injected into every agent system prompt; configurable timezone support
-- 📁 Conversation grouping with pinning, rename, and batch management
-- 🛡️ Vulnerability management with CRUD operations, severity tracking, status workflow, and statistics
-- 📋 Batch task management: create task queues, add multiple tasks, and execute them sequentially
-- 🎭 Role-based testing: 13 predefined security testing roles (Penetration Testing, CTF, Web App Scanning, etc.) with custom prompts and tool restrictions
-- 🎯 Skills system: 22 predefined security testing skills (SQL injection, XSS, API security, etc.) that can be attached to roles or called on-demand by AI agents
-- 🐳 **Docker lifecycle management**: deploy, update, start, stop, restart, and monitor the Docker stack directly from the System Settings UI or via REST API
-- 📱 **Chatbot**: Telegram and Lark long-lived connections so you can talk to CyberStrikeAI from mobile (see [Robot / Chatbot guide](docs/robot_en.md) for setup and commands)
+## Ключевые возможности
 
-## Tool Overview
+- 🤖 **AI-движок** — OpenAI-совместимые модели (GPT, Claude, DeepSeek и др.); раздельный роутинг для tool-calling, суммаризации и основной логики
+- 🔌 **Нативный MCP** — HTTP/stdio/SSE транспорты, встроенный MCP-сервер + федерация внешних MCP
+- 🧰 **116+ готовых YAML-рецептов** инструментов с горячей перезагрузкой
+- 📄 **Пагинация больших результатов** — данные свыше порога сохраняются на диск с пагинацией, фильтрацией и regex-поиском
+- 🔗 **Граф цепочки атаки** — AI-парсинг узлов/рёбер с оценкой рисков и пошаговым воспроизведением
+- 🔒 **Авторизация и аудит** — защищённый веб-интерфейс, Bearer-token сессии, SQLite-аудит
+- 📚 **База знаний** — векторный поиск + **корпусный BM25 Okapi гибридный поиск** с настраиваемыми весами
+- 🧠 **Персистентная память** — 8-категорийное SQLite-хранилище, переживает сжатие и перезапуски; агент помнит учётные данные, цели, находки, планы и запуски инструментов
+- 🔍 **Интроспекция агента** — обязательный preflight-запрос к памяти и базе знаний перед каждым крупным действием
+- ⏰ **Осведомлённость о времени** — текущая дата/время/часовой пояс в каждом системном промпте; инструмент `get_current_time` по требованию
+- 📁 **Группы разговоров** — закрепление, переименование, пакетное управление
+- 🛡️ **Управление уязвимостями** — CRUD, фильтрация по критичности/статусу, статистика
+- 📋 **Пакетные задачи** — очереди с последовательным выполнением и полным отслеживанием
+- 🎭 **Ролевое тестирование** — 14 предустановленных ролей с кастомными промптами и ограничениями инструментов
+- 🎯 **Система навыков** — 24 предустановленных навыка; AI-агенты обращаются через `list_skills` / `read_skill`
+- 📱 **Android VM (Cuttlefish)** — QEMU/KVM Android-устройство для тестирования мобильных приложений, реверс-инжиниринга APK, перехвата трафика; 16 MCP-инструментов; DroidRun AI-автоматизация
+- 🔓 **SSLStrip MITM** — понижение HTTPS→HTTP для перехвата токенов/паролей; интеграция с прокси Cuttlefish
+- 📂 **Файловый менеджер** — отслеживание файлов через разговоры (отчёты, exfil-данные, бинари, API-доки) с метаданными, журналом и статусом
+- 🐳 **Docker lifecycle** — deploy/update/start/stop/restart/remove через UI или REST API
+- 📡 **Чат-боты** — Telegram и Lark со стриминговым прогрессом (см. [Robot guide](docs/robot_en.md))
+- 🌐 **Recon-интеграции** — FOFA, ZoomEye, Shodan, Censys с AI-помощником для составления запросов
+- 🖥️ **Веб-терминал** — интерактивный PTY-терминал прямо в браузере через WebSocket
 
-CyberStrikeAI ships with 100+ curated tools covering the whole kill chain:
+---
 
-- **Network Scanners** – nmap, masscan, rustscan, arp-scan, nbtscan
-- **Web & App Scanners** – sqlmap, nikto, dirb, gobuster, feroxbuster, ffuf, httpx
-- **Vulnerability Scanners** – nuclei, wpscan, wafw00f, dalfox, xsser
-- **Subdomain Enumeration** – subfinder, amass, findomain, dnsenum, fierce
-- **Network Space Search Engines** – fofa_search, zoomeye_search
-- **API Security** – graphql-scanner, arjun, api-fuzzer, api-schema-analyzer
-- **Container Security** – trivy, clair, docker-bench-security, kube-bench, kube-hunter
-- **Cloud Security** – prowler, scout-suite, cloudmapper, pacu, terrascan, checkov
-- **Binary Analysis** – gdb, radare2, ghidra, objdump, strings, binwalk
-- **Exploitation** – metasploit, msfvenom, pwntools, ropper, ropgadget
-- **Password Cracking** – hashcat, john, hashpump
-- **Forensics** – volatility, volatility3, foremost, steghide, exiftool
-- **Post-Exploitation** – linpeas, winpeas, mimikatz, bloodhound, impacket, responder
-- **CTF Utilities** – stegsolve, zsteg, hash-identifier, fcrackzip, pdfcrack, cyberchef
-- **System Helpers** – exec, create-file, delete-file, list-files, modify-file
+## Инструменты
 
-## Basic Usage
+CyberStrikeAI включает **116+ YAML-рецептов инструментов** покрывающих весь kill chain:
 
-### Quick Start (One-Command Deployment)
+| Категория | Инструменты |
+|-----------|------------|
+| **Сетевые сканеры** | nmap, nmap-advanced, masscan, rustscan, arp-scan, nbtscan, autorecon |
+| **Веб и приложения** | sqlmap, nikto, dirb, dirsearch, gobuster, feroxbuster, ffuf, wfuzz, zap, dotdotpwn, httpx |
+| **Сканеры уязвимостей** | nuclei, nuclei-bitrix, wpscan, wafw00f, dalfox, xsser, jaeles, http-intruder |
+| **Субдомены** | subfinder, amass, findomain, dnsenum, fierce |
+| **OSINT и разведка** | gau, waybackurls, hakrawler, katana, paramspider, qsreplace, anew, uro, x8 |
+| **Поиск в сети** | fofa_search, zoomeye_search |
+| **API-безопасность** | graphql-scanner, arjun, api-fuzzer, api-schema-analyzer, jwt-analyzer |
+| **Контейнеры** | trivy, clair, docker-bench-security, kube-bench, kube-hunter, falco |
+| **Облачная безопасность** | prowler, scout-suite, cloudmapper, pacu, terrascan, checkov |
+| **Бинарный анализ** | gdb, gdb-peda, radare2, ghidra, objdump, strings, binwalk, angr, checksec, xxd |
+| **Эксплуатация** | metasploit, msfvenom, pwntools, ropper, ropgadget, one-gadget, pwninit, debix, libc-database |
+| **Пароли и аутентификация** | hashcat, john, hashpump, hydra |
+| **Сетевые атаки** | responder, smbmap, rpcclient, enum4linux, enum4linux-ng, netexec, impacket |
+| **Форензика** | volatility, volatility3, foremost, steghide, exiftool |
+| **Post-exploitation** | linpeas, winpeas, mimikatz, bloodhound |
+| **CTF** | stegsolve, zsteg, hash-identifier, fcrackzip, pdfcrack, cyberchef, dnslog, bitrix-decrypt |
+| **MITM / Прокси** | sslstrip, burpsuite, flaresolverr |
+| **Системные** | exec, create-file, delete-file, modify-file, list-files, cat, install-python-package, execute-python-script |
 
-**Prerequisites:**
-- Go 1.21+ ([Install](https://go.dev/dl/))
-- Python 3.10+ ([Install](https://www.python.org/downloads/))
+---
 
-**One-Command Deployment:**
+## Быстрый старт
+
+### Требования
+
+- **Go 1.21+** ([Установить](https://go.dev/dl/))
+- **Python 3.10+** ([Установить](https://www.python.org/downloads/))
+
+### Один-командный запуск
+
 ```bash
 git clone https://github.com/cybersecua/CyberStrikeAI.git
 cd CyberStrikeAI
 chmod +x run.sh && ./run.sh
 ```
 
-The `run.sh` script will automatically:
-- ✅ Check and validate Go & Python environments
-- ✅ Create Python virtual environment
-- ✅ Install Python dependencies
-- ✅ Download Go dependencies
-- ✅ Build the project
-- ✅ Start the server
+`run.sh` автоматически:
+- ✅ Проверяет окружение Go и Python
+- ✅ Создаёт виртуальное Python-окружение (`venv/`)
+- ✅ Устанавливает зависимости из `requirements.txt`
+- ✅ Скачивает Go-модули
+- ✅ Собирает бинарник (`cmd/server/main.go`)
+- ✅ Запускает сервер
 
-**First-Time Configuration:**
-1. **Configure OpenAI-compatible API** (required before first use)
-   - Open http://localhost:8080 after launch
-   - Go to `Settings` → Fill in your API credentials:
-     ```yaml
-     openai:
-       api_key: "sk-your-key"
-       base_url: "https://api.openai.com/v1"  # or https://api.deepseek.com/v1
-       model: "gpt-4o"  # or deepseek-chat, claude-3-opus, etc.
-     ```
-   - Or edit `config.yaml` directly before launching
-2. **Login** - Use the auto-generated password shown in the console (or set `auth.password` in `config.yaml`)
-3. **Install security tools (optional)** - Install tools as needed:
+### Первоначальная настройка
+
+1. **Настройте AI-провайдера** (обязательно перед первым использованием):
+   - Откройте `http://localhost:8080` → `Settings` → заполните API-данные:
+   ```yaml
+   openai:
+     api_key: "sk-your-key"
+     base_url: "https://api.openai.com/v1"   # или DeepSeek, другой провайдер
+     model: "gpt-4o"
+   ```
+   - Или отредактируйте `config.yaml` (скопируйте из `config.example.yaml`) перед запуском.
+
+2. **Войдите в систему** — используйте автосгенерированный пароль из консоли, или задайте `auth.password` в `config.yaml`.
+
+3. **Установите инструменты безопасности** (опционально; AI автоматически переключается на альтернативы):
    ```bash
    # macOS
    brew install nmap sqlmap nuclei httpx gobuster feroxbuster subfinder amass
    # Ubuntu/Debian
-   sudo apt-get install nmap sqlmap nuclei httpx gobuster feroxbuster
+   sudo apt-get install nmap sqlmap
    ```
-   AI automatically falls back to alternatives when a tool is missing.
 
-**Alternative Launch Methods:**
+### Альтернативные способы запуска
+
 ```bash
-# Direct Go run (requires manual setup)
+# Прямой запуск через Go
 go run cmd/server/main.go
 
-# Manual build
+# Сборка и запуск бинарника
 go build -o cyberstrike-ai cmd/server/main.go
 ./cyberstrike-ai
-```
 
-**Note:** The Python virtual environment (`venv/`) is automatically created and managed by `run.sh`. Tools that require Python (like `api-fuzzer`, `http-framework-test`, etc.) will automatically use this environment.
-
-### Core Workflows
-- **Conversation testing** – Natural-language prompts trigger toolchains with streaming SSE output.
-- **Role-based testing** – Select from predefined security testing roles (Penetration Testing, CTF, Web App Scanning, API Security Testing, etc.) to customize AI behavior and tool availability. Each role applies custom system prompts and can restrict available tools for focused testing scenarios.
-- **Tool monitor** – Inspect running jobs, execution logs, and large-result attachments.
-- **History & audit** – Every conversation and tool invocation is stored in SQLite with replay.
-- **Conversation groups** – Organize conversations into groups, pin important groups, rename or delete groups via context menu.
-- **Vulnerability management** – Create, update, and track vulnerabilities discovered during testing. Filter by severity (critical/high/medium/low/info), status (open/confirmed/fixed/false_positive), and conversation. View statistics and export findings.
-- **Batch task management** – Create task queues with multiple tasks, add or edit tasks before execution, and run them sequentially. Each task executes as a separate conversation, with status tracking (pending/running/completed/failed/cancelled) and full execution history.
-- **Settings** – Tweak provider keys, MCP enablement, tool toggles, and agent iteration limits.
-
-### Built-in Safeguards
-- Required-field validation prevents accidental blank API credentials.
-- Auto-generated strong passwords when `auth.password` is empty.
-- Unified auth middleware for every web/API call (Bearer token flow).
-- Timeout and sandbox guards per tool, plus structured logging for triage.
-
-## Advanced Usage
-
-### Role-Based Testing
-- **Predefined roles** – System includes 13 predefined security testing roles (Penetration Testing, CTF, Web App Scanning, API Security Testing, Binary Analysis, Cloud Security Audit, etc.) in the `roles/` directory.
-- **Custom prompts** – Each role can define a `user_prompt` that prepends to user messages, guiding the AI to adopt specialized testing methodologies and focus areas.
-- **Tool restrictions** – Roles can specify a `tools` list to limit available tools, ensuring focused testing workflows (e.g., CTF role restricts to CTF-specific utilities).
-- **Skills integration** – Roles can attach security testing skills. Skill names are added to system prompts as hints, and AI agents can access skill content on-demand using the `read_skill` tool.
-- **Easy role creation** – Create custom roles by adding YAML files to the `roles/` directory. Each role defines `name`, `description`, `user_prompt`, `icon`, `tools`, `skills`, and `enabled` fields.
-- **Web UI integration** – Select roles from a dropdown in the chat interface. Role selection affects both AI behavior and available tool suggestions.
-
-**Creating a custom role (example):**
-1. Create a YAML file in `roles/` (e.g., `roles/custom-role.yaml`):
-   ```yaml
-   name: Custom Role
-   description: Specialized testing scenario
-   user_prompt: You are a specialized security tester focusing on API security...
-   icon: "\U0001F4E1"
-   tools:
-     - api-fuzzer
-     - arjun
-     - graphql-scanner
-   skills:
-     - api-security-testing
-     - sql-injection-testing
-   enabled: true
-   ```
-2. Restart the server or reload configuration; the role appears in the role selector dropdown.
-
-### Skills System
-- **Predefined skills** – System includes 22 predefined security testing skills (SQL injection, XSS, API security, cloud security, container security, etc.) in the `skills/` directory.
-- **Skill hints in prompts** – When a role is selected, skill names attached to that role are added to the system prompt as recommendations. Skill content is not automatically injected; AI agents must use the `read_skill` tool to access skill details when needed.
-- **On-demand access** – AI agents can also access skills on-demand using built-in tools (`list_skills`, `read_skill`), allowing dynamic skill retrieval during task execution.
-- **Structured format** – Each skill is a directory containing a `SKILL.md` file with detailed testing methods, tool usage, best practices, and examples. Skills support YAML front matter for metadata.
-- **Custom skills** – Create custom skills by adding directories to the `skills/` directory. Each skill directory should contain a `SKILL.md` file with the skill content.
-
-**Creating a custom skill:**
-1. Create a directory in `skills/` (e.g., `skills/my-skill/`)
-2. Create a `SKILL.md` file in that directory with the skill content
-3. Attach the skill to a role by adding it to the role's `skills` field in the role YAML file
-
-### Tool Orchestration & Extensions
-- **YAML recipes** in `tools/*.yaml` describe commands, arguments, prompts, and metadata.
-- **Directory hot-reload** – pointing `security.tools_dir` to a folder is usually enough; inline definitions in `config.yaml` remain supported for quick experiments.
-- **Large-result pagination** – outputs beyond 200 KB are stored as artifacts retrievable through the `query_execution_result` tool with paging, filters, and regex search.
-- **Result compression** – multi-megabyte logs can be summarized or losslessly compressed before persisting to keep SQLite lean.
-
-**Creating a custom tool (typical flow)**
-1. Copy an existing YAML file from `tools/` (for example `tools/sample.yaml`).
-2. Update `name`, `command`, `args`, and `short_description`.
-3. Describe positional or flag parameters in `parameters[]` so the agent knows how to build CLI arguments.
-4. Provide a longer `description`/`notes` block if the agent needs extra context or post-processing tips.
-5. Restart the server or reload configuration; the new tool becomes available immediately and can be enabled/disabled from the Settings panel.
-
-### Attack-Chain Intelligence
-- AI parses each conversation to assemble targets, tools, vulnerabilities, and relationships.
-- The web UI renders the chain as an interactive graph with severity scoring and step replay.
-- Export the chain or raw findings to external reporting pipelines.
-
-### MCP Everywhere
-- **Web mode** – ships with HTTP MCP server automatically consumed by the UI.
-- **MCP stdio mode** – `go run cmd/mcp-stdio/main.go` exposes the agent to Cursor/CLI.
-- **External MCP federation** – register third-party MCP servers (HTTP, stdio, or SSE) from the UI, toggle them per engagement, and monitor their health and call volume in real time.
-
-#### MCP stdio quick start
-1. **Build the binary** (run from the project root):
-   ```bash
-   go build -o cyberstrike-ai-mcp cmd/mcp-stdio/main.go
-   ```
-2. **Wire it up in Cursor**  
-   Open `Settings → Tools & MCP → Add Custom MCP`, pick **Command**, then point to the compiled binary and your config:
-   ```json
-   {
-     "mcpServers": {
-       "cyberstrike-ai": {
-         "command": "/absolute/path/to/cyberstrike-ai-mcp",
-         "args": [
-           "--config",
-           "/absolute/path/to/config.yaml"
-         ]
-       }
-     }
-   }
-   ```
-   Replace the paths with your local locations; Cursor will launch the stdio server automatically.
-
-#### MCP HTTP quick start
-1. Ensure `config.yaml` has `mcp.enabled: true` and adjust `mcp.host` / `mcp.port` if you need a non-default binding (localhost:8081 works well for local Cursor usage).
-2. Start the main service (`./run.sh` or `go run cmd/server/main.go`); the MCP endpoint lives at `http://<host>:<port>/mcp`.
-3. In Cursor, choose **Add Custom MCP → HTTP** and set `Base URL` to `http://127.0.0.1:8081/mcp`.
-4. Prefer committing the setup via `.cursor/mcp.json` so teammates can reuse it:
-   ```json
-   {
-     "mcpServers": {
-       "cyberstrike-ai-http": {
-         "transport": "http",
-         "url": "http://127.0.0.1:8081/mcp"
-       }
-     }
-   }
-   ```
-
-#### External MCP federation (HTTP/stdio/SSE)
-CyberStrikeAI supports connecting to external MCP servers via three transport modes:
-- **HTTP mode** – traditional request/response over HTTP POST
-- **stdio mode** – process-based communication via standard input/output
-- **SSE mode** – Server-Sent Events for real-time streaming communication
-
-To add an external MCP server:
-1. Open the Web UI and navigate to **Settings → External MCP**.
-2. Click **Add External MCP** and provide the configuration in JSON format:
-
-   **HTTP mode example:**
-   ```json
-   {
-     "my-http-mcp": {
-       "transport": "http",
-       "url": "http://127.0.0.1:8081/mcp",
-       "description": "HTTP MCP server",
-       "timeout": 30
-     }
-   }
-   ```
-
-   **stdio mode example:**
-   ```json
-   {
-     "my-stdio-mcp": {
-       "command": "python3",
-       "args": ["/path/to/mcp-server.py"],
-       "description": "stdio MCP server",
-       "timeout": 30
-     }
-   }
-   ```
-
-   **SSE mode example:**
-   ```json
-   {
-     "my-sse-mcp": {
-       "transport": "sse",
-       "url": "http://127.0.0.1:8082/sse",
-       "description": "SSE MCP server",
-       "timeout": 30
-     }
-   }
-   ```
-
-3. Click **Save** and then **Start** to connect to the server.
-4. Monitor the connection status, tool count, and health in real time.
-
-**SSE mode benefits:**
-- Real-time bidirectional communication via Server-Sent Events
-- Suitable for scenarios requiring continuous data streaming
-- Lower latency for push-based notifications
-
-A test SSE MCP server is available at `cmd/test-sse-mcp-server/` for validation purposes.
-
-### Knowledge Base
-- **Vector search** – AI agent can automatically search the knowledge base for relevant security knowledge during conversations using the `search_knowledge_base` tool.
-- **Hybrid retrieval** – combines vector similarity search with **corpus-level BM25 Okapi** keyword scoring for better accuracy. The BM25 index is built from all knowledge chunks (with real inverse document frequency) and is automatically rebuilt when new items are indexed.
-- **Configurable hybrid weight** – `knowledge.retrieval.hybrid_weight` blends vector similarity and BM25 scores (1.0 = pure vector, 0.0 = pure keyword).
-- **Auto-indexing** – scans the `knowledge_base/` directory for Markdown files and automatically indexes them with embeddings.
-- **Web management** – create, update, delete knowledge items through the web UI, with category-based organization.
-- **Retrieval logs** – tracks all knowledge retrieval operations for audit and debugging.
-
-**Quick Start (Using Pre-built Knowledge Base):**
-1. **Download the knowledge database** – Download the pre-built knowledge database file from [GitHub Releases](https://github.com/cybersecua/CyberStrikeAI/releases).
-2. **Extract and place** – Extract the downloaded knowledge database file (`knowledge.db`) and place it in the project's `data/` directory.
-3. **Restart the service** – Restart the CyberStrikeAI service, and the knowledge base will be ready to use immediately without rebuilding the index.
-
-**Setting up the knowledge base:**
-1. **Enable in config** – set `knowledge.enabled: true` in `config.yaml`:
-   ```yaml
-   knowledge:
-     enabled: true
-     base_path: knowledge_base
-     embedding:
-       provider: openai
-       model: text-embedding-v4
-       base_url: "https://api.openai.com/v1"  # or your embedding API
-       api_key: "sk-xxx"
-     retrieval:
-       top_k: 5
-       similarity_threshold: 0.7
-       hybrid_weight: 0.7
-   ```
-2. **Add knowledge files** – place Markdown files in `knowledge_base/` directory, organized by category (e.g., `knowledge_base/SQL Injection/README.md`).
-3. **Scan and index** – use the web UI to scan the knowledge base directory, which will automatically import files and build vector embeddings.
-4. **Use in conversations** – the AI agent will automatically use `search_knowledge_base` when it needs security knowledge. You can also explicitly ask: "Search the knowledge base for SQL injection techniques".
-
-**Knowledge base structure:**
-- Files are organized by category (directory name becomes the category).
-- Each Markdown file becomes a knowledge item with automatic chunking for vector search.
-- The system supports incremental updates – modified files are re-indexed automatically.
-
-
-### Persistent Memory
-
-The persistent memory system allows agents to remember key facts across conversation compressions and server restarts. Memories are stored in SQLite alongside conversations and are automatically injected into every system prompt.
-
-**Memory categories:**
-
-| Category | Purpose |
-|----------|---------|
-| `credential` | Discovered passwords, tokens, API keys, and secrets |
-| `target` | IP addresses, domains, service ports, and scope items |
-| `vulnerability` | Exploit notes, CVE references, and payload details |
-| `fact` | General observations and intelligence about the environment |
-| `note` | Operational reminders and planning notes |
-
-**Built-in memory tools (available to the AI agent):**
-
-| Tool | Description |
-|------|-------------|
-| `store_memory` | Persist a key/value fact with a category |
-| `retrieve_memory` | Search memories by query text and optional category |
-| `list_memories` | List all stored memories, optionally filtered by category |
-| `delete_memory` | Remove a memory entry by ID |
-
-**Configuration (`config.yaml`):**
-```yaml
-agent:
-  memory:
-    enabled: true      # Enable persistent memory (default: true)
-    max_entries: 200   # Hard cap on entries (0 = unlimited)
-```
-
-The context block injected into each system prompt looks like:
-```
-[CREDENTIALS]
-  • admin_password: P@ssw0rd123
-[TARGETS]
-  • main_target: 192.168.1.100 (Apache 2.4, port 80/443)
-[VULNERABILITIES]
-  • sqli_endpoint: /login.php?id= is injectable (union-based)
+# Кастомный путь к конфигу
+./cyberstrike-ai --config /path/to/config.yaml
 ```
 
 ---
 
-### Time Awareness
+## Docker-развёртывание
 
-The time awareness feature automatically prepends the current date, time, timezone, and session age to every agent system prompt. This helps the agent:
-- Correctly timestamp vulnerability reports and notes
-- Reason about time-limited engagements
-- Build time-relative plans (schedule scans, set reminders)
+### Docker Compose (рекомендуется)
 
-**Built-in time tool:**
-
-| Tool | Description |
-|------|-------------|
-| `get_current_time` | Returns current date/time, timezone, Unix timestamp, and session uptime |
-
-**Configuration (`config.yaml`):**
-```yaml
-agent:
-  time_awareness:
-    enabled: true      # Inject time context into prompts (default: true)
-    timezone: "UTC"    # IANA timezone (e.g. "America/New_York", "Europe/London", "Asia/Tokyo")
-```
-
-The injected block looks like:
-```
-<time_context>
-  Current date and time : 2026-03-04 14:30:00 UTC
-  Day of week           : Wednesday
-  Unix timestamp        : 1741099800
-  Session age           : 2h 15m 30s
-</time_context>
-```
-
----
-
-### Docker Lifecycle Management
-
-CyberStrikeAI includes a full Docker management layer accessible from both the web UI and REST API.
-
-**System Settings → Docker panel** lets you:
-- View container status, image version, and compose version at a glance
-- Stream live container logs with a configurable line count
-- Run lifecycle actions (deploy, update, start, stop, restart, remove) with optional proxy or VPN configuration
-- Monitor HTTP health probes for the app on ports 8080 and 18080
-
-**CLI via `run_docker.sh`:**
 ```bash
-./run_docker.sh deploy            # Build and start the stack
-./run_docker.sh update            # git pull + redeploy
-./run_docker.sh start|stop|restart
-./run_docker.sh status            # Show container + app status
-./run_docker.sh logs              # Print last N container log lines
-./run_docker.sh test              # Run container runtime tests
-./run_docker.sh remove            # Remove containers, network, and volumes
+# Сборка и запуск
+./run_docker.sh deploy
 
-# Proxy options (passed through to the container environment):
+# Обновление до последней версии
+./run_docker.sh update
+
+# Управление жизненным циклом
+./run_docker.sh start | stop | restart | status | logs | remove | test
+
+# С прокси
 ./run_docker.sh deploy --proxy-mode socks --proxy-url socks5h://127.0.0.1:1080
 ./run_docker.sh deploy --proxy-mode vpn --vpn-container my-vpn
 ./run_docker.sh update --git-ref v1.5.0
 ```
 
-**Docker API endpoints:**
+Порты по умолчанию: `18080` (HTTP UI), `18081` (MCP). Переопределите через `DOCKER_HTTP_PORT` / `DOCKER_MCP_PORT`.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET`  | `/api/docker/status` | Container status, compose version, and HTTP health probes |
-| `GET`  | `/api/docker/logs?lines=200` | Last N lines from container logs (or local `logs/suite.log`) |
-| `POST` | `/api/docker/action` | Run a lifecycle action (`deploy`, `update`, `start`, `stop`, `restart`, `remove`, `test`) |
+### Docker API
 
-**Docker action request body:**
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/docker/status` | Статус контейнера, версия compose, HTTP health-пробы |
+| `GET` | `/api/docker/logs?lines=200` | Последние N строк логов контейнера |
+| `POST` | `/api/docker/action` | Действие: `deploy`, `update`, `start`, `stop`, `restart`, `remove`, `test` |
+
 ```json
 {
   "action": "update",
@@ -496,196 +224,1265 @@ CyberStrikeAI includes a full Docker management layer accessible from both the w
 }
 ```
 
-See [Docker Guide](docs/docker_en.md) for a full walkthrough.
+Подробности — в [Docker Guide](docs/docker_en.md).
 
-### Agent Introspection
+---
 
-Before every major new action the agent now performs a mandatory introspection pass:
+## Основные рабочие процессы
 
-1. **Memory similarity check** – retrieves memory entries that are semantically similar to the current user request, plus entity-based matches (IP addresses, domain names). This surfaces relevant credentials, prior tool results, and known vulnerabilities without requiring the user to repeat context.
-2. **Knowledge-base preflight** – runs a focused knowledge-base query combining the user input with penetration-testing terminology to surface relevant exploitation techniques and tool guidance.
-3. **Contextual decision** – the agent uses this retrieved context to choose tools and parameters, avoiding duplicate scans and leveraging prior findings automatically.
+| Процесс | Описание |
+|---------|----------|
+| **Диалоговое тестирование** | Промпты на естественном языке запускают AI-оркестрированные цепочки инструментов со SSE-стримингом |
+| **Ролевое тестирование** | 14 предустановленных ролей настраивают поведение AI и доступные инструменты |
+| **Монитор инструментов** | Задания, логи выполнения, статистика вызовов, большие артефакты |
+| **История и аудит** | Каждый разговор и вызов инструмента сохранены в SQLite с возможностью воспроизведения |
+| **Группы разговоров** | Организация в группы; закрепление, переименование, пакетное удаление |
+| **Управление уязвимостями** | CRUD с фильтрацией по критичности/статусу/разговору; экспорт находок |
+| **Пакетные задачи** | Очереди задач с последовательным выполнением, паузой и полным отслеживанием |
+| **Цепочка атаки** | Интерактивный граф с оценкой рисков и пошаговым воспроизведением |
+| **База знаний** | Вектор + BM25 гибридный поиск по Markdown-файлам; автоиндексирование |
+| **Персистентная память** | Кросс-сессионное хранилище; агент помнит учётные данные и цели через перезапуски |
+| **OSINT / Разведка** | Единый UI для FOFA, ZoomEye, Shodan, Censys с AI-парсером запросов |
+| **Веб-терминал** | Браузерный интерактивный PTY-терминал через WebSocket |
+| **Файловый менеджер** | Загрузка и отслеживание файлов (отчёты, бинари, exfil-данные, API-доки) |
+| **Android VM** | Cuttlefish для тестирования мобильных приложений и перехвата трафика |
+| **Чат-боты** | Управление платформой с телефона через Telegram или Lark |
 
-The introspection context is injected into the system prompt as a `<memory_similarity_context>` block before each agent turn, ensuring the agent never starts a scan it already completed.
+---
 
-### Automation Hooks
-- **REST APIs** – everything the UI uses (auth, conversations, tool runs, monitor, vulnerabilities, roles) is available over JSON.
-- **Role APIs** – manage security testing roles via `/api/roles` endpoints: `GET /api/roles` (list all roles), `GET /api/roles/:name` (get role), `POST /api/roles` (create role), `PUT /api/roles/:name` (update role), `DELETE /api/roles/:name` (delete role). Roles are stored as YAML files in the `roles/` directory and support hot-reload.
-- **Vulnerability APIs** – manage vulnerabilities via `/api/vulnerabilities` endpoints: `GET /api/vulnerabilities` (list with filters), `POST /api/vulnerabilities` (create), `GET /api/vulnerabilities/:id` (get), `PUT /api/vulnerabilities/:id` (update), `DELETE /api/vulnerabilities/:id` (delete), `GET /api/vulnerabilities/stats` (statistics).
-- **Batch Task APIs** – manage batch task queues via `/api/batch-tasks` endpoints: `POST /api/batch-tasks` (create queue), `GET /api/batch-tasks` (list queues), `GET /api/batch-tasks/:queueId` (get queue), `POST /api/batch-tasks/:queueId/start` (start execution), `POST /api/batch-tasks/:queueId/cancel` (cancel), `DELETE /api/batch-tasks/:queueId` (delete), `POST /api/batch-tasks/:queueId/tasks` (add task), `PUT /api/batch-tasks/:queueId/tasks/:taskId` (update task), `DELETE /api/batch-tasks/:queueId/tasks/:taskId` (delete task). Tasks execute sequentially, each creating a separate conversation with full status tracking.
-- **Docker APIs** – manage the Docker stack via `/api/docker/status`, `/api/docker/logs`, and `/api/docker/action` (see Docker Lifecycle Management section above).
-- **Task control** – pause/resume/stop long scans, re-run steps with new params, or stream transcripts.
-- **Audit & security** – rotate passwords via `/api/auth/change-password`, enforce short-lived sessions, and restrict MCP ports at the network layer when exposing the service.
+## Ролевое тестирование
 
-## Configuration Reference
+### Предустановленные роли (14)
 
-```yaml
-auth:
-  password: "change-me"
-  session_duration_hours: 12
-server:
-  host: "0.0.0.0"
-  port: 8080
-log:
-  level: "info"
-  output: "stdout"
-mcp:
-  enabled: true
-  host: "0.0.0.0"
-  port: 8081
-openai:
-  api_key: "sk-xxx"
-  base_url: "https://api.deepseek.com/v1"
-  model: "deepseek-chat"
-  max_total_tokens: 120000  # Token limit shared by memory compression and attack-chain building
-database:
-  path: "data/conversations.db"
-  knowledge_db_path: "data/knowledge.db"  # Optional: separate DB for knowledge base
-security:
-  tools_dir: "tools"
-  tool_description_mode: "full"  # "full" or "short" — controls how much tool info is sent to the LLM
-agent:
-  max_iterations: 120
-  large_result_threshold: 102400  # bytes; results larger than this are stored on disk
-  result_storage_dir: "tmp"
-  parallel_tool_execution: true
-  max_parallel_tools: 0           # 0 = unlimited concurrent tools
-  tool_retry_count: 0
-  # ── Time Awareness ──────────────────────────────────────────────────────────
-  time_awareness:
-    enabled: true      # Prepend current date/time to every system prompt (recommended)
-    timezone: "UTC"    # IANA timezone name, e.g. "America/New_York", "Europe/London"
-  # ── Persistent Memory ───────────────────────────────────────────────────────
-  memory:
-    enabled: true      # Enable cross-session persistent memory store
-    max_entries: 200   # Hard cap on memory entries (0 = unlimited)
-knowledge:
-  enabled: false  # Enable knowledge base feature
-  base_path: "knowledge_base"  # Path to knowledge base directory
-  embedding:
-    provider: "openai"  # Embedding provider (currently only "openai")
-    model: "text-embedding-v4"  # Embedding model name
-    base_url: ""  # Leave empty to use OpenAI base_url
-    api_key: ""  # Leave empty to use OpenAI api_key
-  retrieval:
-    top_k: 5  # Number of top results to return
-    similarity_threshold: 0.7  # Minimum similarity score (0-1)
-    hybrid_weight: 0.7  # Weight for vector search (1.0 = pure vector, 0.0 = pure BM25 keyword)
-roles_dir: "roles"  # Role configuration directory (relative to config file)
-skills_dir: "skills"  # Skills directory (relative to config file)
-```
+| Роль | Описание |
+|------|----------|
+| Penetration Testing | Полный пентест: разведка, эксплуатация, post-exploitation |
+| CTF | CTF-утилиты (стего, крипто, pwn, реверсинг, веб) |
+| Web Application Scanning | Оценка безопасности веб-приложений (SQLi, XSS, CSRF и др.) |
+| API Security Testing | Тестирование REST/GraphQL/gRPC API |
+| Binary Analysis | Реверс-инжиниринг и бинарная эксплуатация |
+| Cloud Security Audit | Аудит облачной инфраструктуры |
+| Container Security | Docker/Kubernetes security assessment |
+| Digital Forensics | Форензика памяти и анализ артефактов |
+| Information Gathering | Пассивная/активная разведка и OSINT |
+| Post-Exploitation Testing | Post-compromise операции и lateral movement |
+| Comprehensive Vulnerability Scan | Широкое многовекторное сканирование |
+| Web Framework Testing | Тестирование специфичных уязвимостей фреймворков |
+| Default | Универсальное тестирование безопасности |
 
-### Tool Definition Example (`tools/nmap.yaml`)
-
-```yaml
-name: "nmap"
-command: "nmap"
-args: ["-sT", "-sV", "-sC"]
-enabled: true
-short_description: "Network mapping & service fingerprinting"
-parameters:
-  - name: "target"
-    type: "string"
-    description: "IP or domain"
-    required: true
-    position: 0
-  - name: "ports"
-    type: "string"
-    flag: "-p"
-    description: "Range, e.g. 1-1000"
-```
-
-### Role Definition Example (`roles/penetration-testing.yaml`)
+### Формат конфигурации роли
 
 ```yaml
 name: Penetration Testing
-description: Professional penetration testing expert for comprehensive security testing
-user_prompt: You are a professional cybersecurity penetration testing expert. Please use professional penetration testing methods and tools to conduct comprehensive security testing on targets, including but not limited to SQL injection, XSS, CSRF, file inclusion, command execution and other common vulnerabilities.
-icon: "\U0001F3AF"
+description: Professional penetration testing expert
+user_prompt: You are a professional cybersecurity penetration testing expert...
+icon: "🎯"
 tools:
   - nmap
   - sqlmap
   - nuclei
-  - burpsuite
   - metasploit
-  - httpx
   - record_vulnerability
-  - list_knowledge_risk_types
   - search_knowledge_base
+skills:
+  - sql-injection-testing
+  - xss-testing
 enabled: true
 ```
 
-## Related Documentation
+### Создание кастомной роли
 
-| Document | Description |
-|----------|-------------|
-| [Robot / Chatbot guide](docs/robot_en.md) | Full setup, commands, and troubleshooting for Lark & Telegram integration. **Follow this to avoid common pitfalls.** |
-| [Docker Guide](docs/docker_en.md) | Docker deployment, lifecycle management, proxy/VPN configuration, and System Settings UI reference. |
-| [Memory Guide](docs/memory_en.md) | Persistent memory system: categories, agent tools, UI panel, and API reference. |
-| [Tool Configuration Guide](tools/README.md) | How to write, configure, and extend YAML tool recipes. |
-| [Role Configuration Guide](roles/README.md) | How to create and manage security testing roles. |
-| [Skills System Guide](skills/README.md) | How to create and attach skills to roles. |
-| [Roadmap](ROADMAP.md) | Planned features and development direction. |
-
-## Project Layout
-
-```
-CyberStrikeAI/
-├── cmd/                 # Server, MCP stdio, and test entrypoints
-├── internal/            # Agent engine, MCP core, handlers, security executor
-├── web/                 # Single-page application (templates + static assets)
-├── tools/               # YAML tool recipes (100+ provided)
-├── roles/               # Role configurations (13 predefined security testing roles)
-├── skills/              # Skills library (22 predefined security testing skills)
-├── knowledge_base/      # Markdown files for the vector knowledge base
-├── scripts/             # Installation and utility scripts
-├── docs/                # Additional documentation (chatbot, Docker, memory guides)
-├── images/              # Screenshots and diagrams for documentation
-├── config.yaml          # Runtime configuration
-├── run.sh               # One-command launcher script
-├── run_docker.sh        # Docker lifecycle management script
-├── docker-compose.yml   # Docker Compose configuration
-├── ROADMAP.md           # Development roadmap
-└── README.md
-```
-
-## Basic Usage Examples
-
-```
-Scan open ports on 192.168.1.1
-Perform a comprehensive port scan on 192.168.1.1 focusing on 80,443,22
-Check if https://example.com/page?id=1 is vulnerable to SQL injection
-Scan https://example.com for hidden directories and outdated software
-Enumerate subdomains for example.com, then run nuclei against the results
-```
-
-## Advanced Playbooks
-
-```
-Load the recon-engagement template, run amass/subfinder, then brute-force dirs on every live host.
-Use external Burp-based MCP server for authenticated traffic replay, then pass findings back for graphing.
-Compress the 5 MB nuclei report, summarize critical CVEs, and attach the artifact to the conversation.
-Build an attack chain for the latest engagement and export the node list with severity >= high.
-```
-
-## ⚠️ Disclaimer
-
-**This tool is for educational and authorized testing purposes only!**
-
-CyberStrikeAI is a professional security testing platform designed to assist security researchers, penetration testers, and IT professionals in conducting security assessments and vulnerability research **with explicit authorization**.
-
-**By using this tool, you agree to:**
-- Use this tool only on systems where you have clear written authorization
-- Comply with all applicable laws, regulations, and ethical standards
-- Take full responsibility for any unauthorized use or misuse
-- Not use this tool for any illegal or malicious purposes
-
-**The developers are not responsible for any misuse!** Please ensure your usage complies with local laws and regulations, and that you have obtained explicit authorization from the target system owner.
+1. Создайте `roles/my-role.yaml` с полями выше.
+2. Перезапустите сервер — роль появится в выпадающем списке.
+3. Или управляйте через REST API (`/api/roles`).
 
 ---
 
-Need help or want to contribute? Open an issue or PR—community tooling additions are welcome!
+## Система навыков
 
-See [ROADMAP.md](ROADMAP.md) for planned features and the project direction.
+### Предустановленные навыки (24)
 
+| Директория навыка | Область |
+|------------------|---------|
+| `sql-injection-testing` | SQL-инъекции |
+| `xss-testing` | Межсайтовый скриптинг |
+| `api-security-testing` | Безопасность API |
+| `cloud-security-audit` | Облачные конфигурации |
+| `container-security-testing` | Docker/Kubernetes |
+| `network-penetration-testing` | Сетевые атаки |
+| `mobile-app-security-testing` | Мобильные приложения |
+| `android-reverse-engineering` | Реверсинг APK |
+| `binary-analysis` | Бинарная эксплуатация |
+| `vulnerability-assessment` | Общая оценка уязвимостей |
+| `web-app-scanning` | Сканирование веб-приложений |
+| `web-framework-testing` | Тестирование фреймворков |
+| `command-injection-testing` | Инъекция ОС-команд |
+| `ssrf-testing` | SSRF |
+| `csrf-testing` | CSRF |
+| `idor-testing` | IDOR |
+| `file-upload-testing` | Загрузка файлов |
+| `deserialization-testing` | Десериализация |
+| `xxe-testing` | XXE-инъекция |
+| `xpath-injection-testing` | XPath-инъекция |
+| `ldap-injection-testing` | LDAP-инъекция |
+| `business-logic-testing` | Бизнес-логика |
+| `secure-code-review` | Ревью кода |
+| `incident-response` | Реагирование на инциденты |
+| `security-automation` | Автоматизация |
+| `security-awareness-training` | Обучение безопасности |
+| `bitrix24-webhook-exploitation` | Эксплуатация Bitrix24 |
 
+### Как работают навыки
+
+- Навыки — это директории в `skills/`, каждая содержит `SKILL.md`.
+- При выборе роли имена навыков добавляются как подсказки в системный промпт.
+- AI-агент обращается к содержимому навыков по требованию через `list_skills` / `read_skill`.
+- Статистика использования навыков отслеживается в таблице `skill_stats`.
+
+### Создание кастомного навыка
+
+```
+skills/
+└── my-custom-skill/
+    └── SKILL.md    ← Полный Markdown с методами, инструментами, примерами
+```
+
+---
+
+## MCP (Model Context Protocol)
+
+### Встроенный MCP-сервер
+
+Платформа включает встроенный MCP-сервер с тремя транспортами:
+
+| Транспорт | Эндпоинт | Использование |
+|-----------|----------|---------------|
+| **HTTP** | `http://<host>:8081/mcp` | API-интеграции, внешние клиенты |
+| **SSE** | `http://<host>:8081/sse` | Стриминг в реальном времени |
+| **stdio** | `cmd/mcp-stdio/main.go` | Cursor/IDE интеграция |
+
+### MCP stdio — быстрый старт (Cursor)
+
+```bash
+# Собрать бинарник
+go build -o cyberstrike-ai-mcp cmd/mcp-stdio/main.go
+```
+
+Добавьте в `.cursor/mcp.json`:
+```json
+{
+  "mcpServers": {
+    "cyberstrike-ai": {
+      "command": "/absolute/path/to/cyberstrike-ai-mcp",
+      "args": ["--config", "/absolute/path/to/config.yaml"]
+    }
+  }
+}
+```
+
+### MCP HTTP — быстрый старт (Cursor)
+
+```json
+{
+  "mcpServers": {
+    "cyberstrike-ai-http": {
+      "transport": "http",
+      "url": "http://127.0.0.1:8081/mcp"
+    }
+  }
+}
+```
+
+### Федерация внешних MCP
+
+Зарегистрируйте сторонние MCP-серверы через **Settings → External MCP**:
+
+**HTTP:**
+```json
+{
+  "my-http-mcp": {
+    "transport": "http",
+    "url": "http://127.0.0.1:9000/mcp",
+    "description": "Кастомный HTTP MCP",
+    "timeout": 30
+  }
+}
+```
+
+**stdio:**
+```json
+{
+  "my-stdio-mcp": {
+    "command": "python3",
+    "args": ["/path/to/mcp-server.py"],
+    "env": {"API_KEY": "xxx"},
+    "description": "stdio MCP сервер",
+    "timeout": 30
+  }
+}
+```
+
+**SSE:**
+```json
+{
+  "my-sse-mcp": {
+    "transport": "sse",
+    "url": "http://127.0.0.1:9001/sse",
+    "description": "SSE MCP сервер",
+    "timeout": 30
+  }
+}
+```
+
+**Ghidra Headless MCP** (212 инструментов реверс-инжиниринга):
+```yaml
+ghidra-headless-mcp:
+  transport: stdio
+  command: bash
+  args: ["scripts/ghidra/start-ghidra-mcp.sh"]
+  env:
+    GHIDRA_INSTALL_DIR: "/opt/ghidra"
+  description: "212 Ghidra инструментов: декомпиляция, дизассемблирование, xrefs, патчинг"
+  timeout: 600
+```
+
+---
+
+## Персистентная память
+
+### Категории памяти
+
+| Категория | Назначение |
+|-----------|-----------|
+| `credential` | Обнаруженные пароли, токены, API-ключи, секреты |
+| `target` | IP-адреса, домены, порты сервисов, область тестирования |
+| `vulnerability` | Заметки об эксплойтах, CVE-ссылки, payload-детали |
+| `fact` | Общие наблюдения и разведывательная информация |
+| `note` | Оперативные напоминания и заметки планирования |
+| `tool_run` | Записи о выполненных инструментах (автосохранение для предотвращения дублей) |
+| `discovery` | Находки, требующие дальнейшего исследования |
+| `plan` | Планы действий и статус выполнения шагов |
+
+### Статусы записей памяти
+
+| Статус | Смысл |
+|--------|-------|
+| `active` | Дефолтный статус для новых записей |
+| `confirmed` | Находка проверена и воспроизведена |
+| `false_positive` | Расследовано и исключено |
+| `disproven` | Факт оказался неверным после дополнительного исследования |
+
+### Уровни достоверности
+
+`high` | `medium` | `low`
+
+### Инструменты памяти для AI-агента
+
+| Инструмент | Описание |
+|-----------|----------|
+| `store_memory` | Сохранить пару ключ/значение с категорией, статусом и достоверностью |
+| `retrieve_memory` | Поиск записей по тексту запроса и категории |
+| `list_memories` | Список всех записей, с фильтрацией по категории |
+| `delete_memory` | Удалить запись по ID |
+
+### Пример инъекции в системный промпт
+
+```
+[CREDENTIALS]
+  • admin_password: P@ssw0rd123 (confidence: high)
+[TARGETS]
+  • main_target: 192.168.1.100 (Apache 2.4, port 80/443)
+[VULNERABILITIES]
+  • sqli_endpoint: /login.php?id= is injectable (union-based)
+[TOOL_RUNS]
+  • nmap_192.168.1.100: завершён 2026-03-13, найдено 5 открытых портов
+```
+
+### Настройка
+
+```yaml
+agent:
+  memory:
+    enabled: true
+    max_entries: 2000   # 0 = без ограничений
+```
+
+Подробности — в [Memory Guide](docs/memory_en.md).
+
+---
+
+## Осведомлённость о времени
+
+Агент автоматически получает текущую дату, время, часовой пояс и время жизни сессии в каждом системном промпте.
+
+### Инструмент времени
+
+| Инструмент | Описание |
+|-----------|----------|
+| `get_current_time` | Возвращает текущие дату/время, часовой пояс, Unix timestamp и uptime сессии |
+
+### Настройка
+
+```yaml
+agent:
+  time_awareness:
+    enabled: true
+    timezone: "UTC"    # IANA: "Europe/Moscow", "America/New_York", "Asia/Tokyo"
+```
+
+### Формат инжектируемого блока
+
+```
+<time_context>
+  Current date and time : 2026-03-13 14:30:00 UTC
+  Day of week           : Friday
+  Unix timestamp        : 1741875000
+  Session age           : 2h 15m 30s
+</time_context>
+```
+
+---
+
+## Интроспекция агента
+
+Перед каждым крупным действием агент выполняет обязательный preflight-проход:
+
+1. **Проверка похожести памяти** — извлекает семантически похожие записи + entity-матчинг (IP, домены), раскрывая прошлые учётные данные, результаты инструментов и известные уязвимости.
+2. **Preflight базы знаний** — фокусированный KB-запрос, совмещающий запрос пользователя с пентест-терминологией.
+3. **Контекстуальное решение** — агент использует полученный контекст для выбора инструментов, избегая повторных сканирований.
+
+Результат инжектируется как блок `<memory_similarity_context>` в системный промпт перед каждым ходом агента.
+
+---
+
+## Android VM (Cuttlefish)
+
+Полноценное виртуальное Android-устройство (AOSP) на QEMU/KVM:
+- Тестирование безопасности мобильных приложений
+- Реверс-инжиниринг APK и динамический анализ
+- Перехват трафика (совместно с SSLStrip)
+- DroidRun AI-автоматизация UI
+
+**16 MCP-инструментов:** `launch_cuttlefish`, `stop_cuttlefish`, `cuttlefish_status`, `adb_shell`, `install_apk`, `screenshot`, `start_frida_server`, `frida_attach`, `set_proxy`, `install_cert`, `take_snapshot`, `restore_snapshot`, `droidrun_start`, `droidrun_stop`, `droidrun_status` и др.
+
+### Настройка Cuttlefish
+
+```yaml
+agent:
+  cuttlefish:
+    enabled: false
+    cvd_home: ""                    # по умолч.: ~/cuttlefish-workspace
+    memory_mb: 8192                 # ОЗУ VM (МБ)
+    cpus: 4                         # Виртуальные CPU
+    disk_mb: 16000                  # Размер раздела данных (МБ)
+    gpu_mode: guest_swiftshader     # или drm_virgl для аппаратного ускорения
+    auto_launch: false              # Автозапуск VM при старте сервера
+    webrtc_port: 8443               # Экран VM по https://localhost:8443
+    droidrun_path: ""               # по умолч.: ~/droidrun
+    proxy_port: 18090               # HTTP-порт DroidRun прокси
+    proxy_auto_start: true
+    vision_enabled: true            # Скриншоты для VL-моделей
+```
+
+**Установка:** запустите `scripts/cuttlefish/setup.sh`.
+
+---
+
+## SSLStrip MITM
+
+Инструмент для понижения HTTPS → HTTP:
+
+- Перехватывает пароли, токены сессий, API-ключи, cookie в открытом виде
+- Работает отдельно или совместно с Cuttlefish (авто-маршрутизация трафика Android VM)
+- Требует: `iptables`, IP-forwarding, сетевая позиция (ARP-спуфинг / rogue AP)
+
+### Настройка SSLStrip
+
+```yaml
+agent:
+  sslstrip:
+    enabled: false
+    listen_port: 10000
+    log_dir: /tmp
+    auto_proxy: false    # Авто-настройка прокси Cuttlefish при запуске инструмента
+```
+
+---
+
+## Файловый менеджер
+
+Отслеживание файлов через разговоры с полными метаданными и статус-машиной.
+
+### Типы файлов
+
+| Тип | Описание |
+|-----|----------|
+| `report` | Вывод внешних инструментов, результаты сканирований |
+| `api_docs` | Документация API |
+| `project_file` | Файлы тестируемого проекта |
+| `target_file` | Файлы, полученные от цели |
+| `reversing` | Бинари для реверс-инжиниринга |
+| `exfiltrated` | Exfiltrated-данные |
+| `other` | Прочее |
+
+### Статусы файлов
+
+`pending` → `processing` → `analyzed` → `in_progress` → `completed` → `archived`
+
+### MCP-инструменты файлового менеджера
+
+`register_file`, `update_file`, `list_files`, `get_file`, `append_file_log`, `append_file_findings`
+
+**Вложения в чате автоматически регистрируются** в файловом менеджере.
+
+### Настройка
+
+```yaml
+agent:
+  file_manager:
+    enabled: true
+    storage_dir: managed_files
+```
+
+---
+
+## База знаний
+
+### Установка
+
+```yaml
+knowledge:
+  enabled: true
+  base_path: knowledge_base
+  embedding:
+    provider: openai
+    model: text-embedding-3-small
+    base_url: ""      # наследует от openai.base_url
+    api_key: ""       # наследует от openai.api_key
+    max_tokens: 0     # размер чанка (0 = по умолч. 512)
+  retrieval:
+    top_k: 5
+    similarity_threshold: 0.7
+    hybrid_weight: 0.7    # 1.0 = чистый вектор, 0.0 = чистый BM25
+```
+
+### Структура файлов
+
+```
+knowledge_base/
+├── SQL Injection/
+│   └── README.md          # первый уровень директории = категория
+├── XSS/
+│   └── README.md
+└── Cloud Security/
+    └── misconfigurations.md
+```
+
+### Быстрый старт
+
+Скачайте готовый `knowledge.db` из [GitHub Releases](https://github.com/cybersecua/CyberStrikeAI/releases) и положите в `data/`.
+
+### Возможности поиска
+
+- **Векторный поиск** — косинусное сходство через OpenAI embeddings
+- **BM25 Okapi** — корпусный IDF-скоринг по всем индексированным чанкам
+- **Гибридный скоринг** — смешивание вектора + BM25 через `hybrid_weight`
+- **Авто-инкрементальное обновление** — изменённые файлы переиндексируются автоматически
+- **Журнал поиска** — каждый запрос логируется для аудита
+
+### MCP-инструменты для AI-агента
+
+| Инструмент | Описание |
+|-----------|----------|
+| `search_knowledge_base` | Гибридный поиск вектор + BM25 |
+| `list_knowledge_risk_types` | Список всех категорий знаний |
+
+---
+
+## Recon / OSINT интеграции
+
+Страница **Information Gathering** предоставляет единый UI поиска:
+
+| Движок | Поле конфига | Описание |
+|--------|-------------|----------|
+| FOFA | `fofa.email` + `fofa.api_key` | Поиск интернет-активов |
+| ZoomEye | `zoomeye.api_key` | Поиск в киберпространстве |
+| Shodan | `shodan.api_key` | Поиск подключённых устройств |
+| Censys | `censys.api_id` + `censys.api_secret` | База данных интернет-сканирования |
+
+**Особенности:**
+- Ключи API проксируются через бэкенд — никогда не раскрываются на фронтенде
+- **AI-парсер запросов** (`/api/fofa/parse`) — конвертирует запрос на естественном языке в синтаксис FOFA с предварительным просмотром перед отправкой
+- Валидация ключей API (`/validate` эндпоинты) — проверка корректности перед использованием
+- Ключи задаются через переменные окружения (`FOFA_EMAIL`, `FOFA_API_KEY`) или Settings UI
+
+---
+
+## Чат-боты
+
+### Telegram
+
+- Long-polling с поддержкой нескольких пользователей (независимые сессии на каждый user ID)
+- Стриминг прогресса в реальном времени (сообщение редактируется по мере выполнения)
+- Смена роли командой `/role <name>`
+- Белый список пользователей через `allowed_user_ids`
+- Поддержка групп (ответ на @ упоминания)
+
+```yaml
+robots:
+  telegram:
+    enabled: true
+    bot_token: "123456:ABC-..."
+    allowed_user_ids: [123456789]    # пусто = разрешить всем
+```
+
+### Lark (Feishu)
+
+- Постоянное долгосрочное соединение через Lark SDK
+- Подписка на события с токеном верификации
+
+```yaml
+robots:
+  lark:
+    enabled: true
+    app_id: "cli_xxx"
+    app_secret: "xxx"
+    verify_token: "xxx"
+```
+
+Подробности — в [Robot Guide](docs/robot_en.md).
+
+---
+
+## Полный справочник REST API
+
+> Все маршруты, кроме `/api/health`, `/api/auth/login` и `/api/robot/lark`, требуют Bearer-токен (`Authorization: Bearer <token>`).
+
+### Служебные
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/health` | Состояние системы, статистика MCP (без авторизации) |
+
+### Авторизация
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/auth/login` | Вход, возвращает Bearer-токен |
+| `POST` | `/api/auth/logout` | Выход |
+| `POST` | `/api/auth/change-password` | Смена пароля |
+| `GET` | `/api/auth/validate` | Проверка токена |
+
+### AI-агент
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/agent-loop` | Запуск агента (синхронный) |
+| `POST` | `/api/agent-loop/stream` | Запуск агента (SSE-стриминг) |
+| `POST` | `/api/agent-loop/cancel` | Отмена выполняющегося агента |
+| `GET` | `/api/agent-loop/tasks` | Список активных задач |
+| `GET` | `/api/agent-loop/tasks/completed` | Список завершённых задач |
+
+### Разговоры
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/conversations` | Создать разговор |
+| `GET` | `/api/conversations` | Список разговоров |
+| `GET` | `/api/conversations/:id` | Получить разговор |
+| `PUT` | `/api/conversations/:id` | Обновить разговор (название) |
+| `DELETE` | `/api/conversations/:id` | Удалить разговор |
+| `PUT` | `/api/conversations/:id/pinned` | Закрепить / открепить |
+| `GET` | `/api/conversations/:id/results` | Полные результаты разговора (для OpenAPI) |
+
+### Группы разговоров
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/groups` | Создать группу |
+| `GET` | `/api/groups` | Список групп |
+| `GET` | `/api/groups/:id` | Получить группу |
+| `PUT` | `/api/groups/:id` | Обновить группу (название, иконка) |
+| `DELETE` | `/api/groups/:id` | Удалить группу |
+| `PUT` | `/api/groups/:id/pinned` | Закрепить / открепить группу |
+| `GET` | `/api/groups/:id/conversations` | Разговоры в группе |
+| `POST` | `/api/groups/conversations` | Добавить разговор в группу |
+| `DELETE` | `/api/groups/:id/conversations/:conversationId` | Убрать разговор из группы |
+| `PUT` | `/api/groups/:id/conversations/:conversationId/pinned` | Закрепить разговор в группе |
+
+### Пакетные задачи
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/batch-tasks` | Создать очередь задач |
+| `GET` | `/api/batch-tasks` | Список очередей |
+| `GET` | `/api/batch-tasks/:queueId` | Получить очередь |
+| `POST` | `/api/batch-tasks/:queueId/start` | Запустить выполнение |
+| `POST` | `/api/batch-tasks/:queueId/pause` | Поставить на паузу |
+| `DELETE` | `/api/batch-tasks/:queueId` | Удалить очередь |
+| `POST` | `/api/batch-tasks/:queueId/tasks` | Добавить задачу |
+| `PUT` | `/api/batch-tasks/:queueId/tasks/:taskId` | Обновить задачу |
+| `DELETE` | `/api/batch-tasks/:queueId/tasks/:taskId` | Удалить задачу |
+
+### Уязвимости
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/vulnerabilities` | Список (фильтр по severity/status/conversation) |
+| `GET` | `/api/vulnerabilities/stats` | Статистика |
+| `GET` | `/api/vulnerabilities/:id` | Получить уязвимость |
+| `POST` | `/api/vulnerabilities` | Создать |
+| `PUT` | `/api/vulnerabilities/:id` | Обновить |
+| `DELETE` | `/api/vulnerabilities/:id` | Удалить |
+
+### Роли
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/roles` | Список всех ролей |
+| `GET` | `/api/roles/:name` | Получить роль |
+| `GET` | `/api/roles/skills/list` | Список навыков, привязанных к ролям |
+| `POST` | `/api/roles` | Создать роль |
+| `PUT` | `/api/roles/:name` | Обновить роль |
+| `DELETE` | `/api/roles/:name` | Удалить роль |
+
+### Навыки (Skills)
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/skills` | Список всех навыков |
+| `GET` | `/api/skills/stats` | Статистика использования навыков |
+| `DELETE` | `/api/skills/stats` | Очистить всю статистику навыков |
+| `GET` | `/api/skills/:name` | Получить навык и его содержимое |
+| `GET` | `/api/skills/:name/bound-roles` | Роли, использующие навык |
+| `POST` | `/api/skills` | Создать навык |
+| `PUT` | `/api/skills/:name` | Обновить навык |
+| `DELETE` | `/api/skills/:name` | Удалить навык |
+| `DELETE` | `/api/skills/:name/stats` | Очистить статистику конкретного навыка |
+
+### Монитор инструментов
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/monitor` | Список выполнений инструментов |
+| `GET` | `/api/monitor/execution/:id` | Получить конкретное выполнение |
+| `DELETE` | `/api/monitor/execution/:id` | Удалить запись выполнения |
+| `DELETE` | `/api/monitor/executions` | Удалить все записи выполнений |
+| `GET` | `/api/monitor/stats` | Агрегированная статистика инструментов |
+
+### Конфигурация
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/config` | Получить текущую конфигурацию |
+| `GET` | `/api/config/tools` | Список зарегистрированных инструментов |
+| `POST` | `/api/config/models` | Обнаружение доступных AI-моделей |
+| `PUT` | `/api/config` | Обновить конфигурацию |
+| `POST` | `/api/config/apply` | Применить конфигурацию без перезапуска |
+
+### Терминал
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/terminal/run` | Выполнить команду (синхронно) |
+| `POST` | `/api/terminal/run/stream` | Выполнить команду (SSE-стриминг) |
+| `GET` | `/api/terminal/ws` | Интерактивный WebSocket PTY-терминал |
+
+### Внешний MCP
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/external-mcp` | Список внешних MCP-серверов |
+| `GET` | `/api/external-mcp/stats` | Статистика внешних MCP (инструменты, здоровье) |
+| `GET` | `/api/external-mcp/:name` | Получить конкретный внешний MCP |
+| `PUT` | `/api/external-mcp/:name` | Добавить или обновить внешний MCP |
+| `DELETE` | `/api/external-mcp/:name` | Удалить внешний MCP |
+| `POST` | `/api/external-mcp/:name/start` | Запустить соединение |
+| `POST` | `/api/external-mcp/:name/stop` | Остановить соединение |
+
+### Цепочка атаки
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/attack-chain/:conversationId` | Получить граф цепочки атаки |
+| `POST` | `/api/attack-chain/:conversationId/regenerate` | Перегенерировать цепочку атаки |
+
+### База знаний
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/knowledge/categories` | Список категорий |
+| `GET` | `/api/knowledge/stats` | Статистика (кол-во категорий, элементов) |
+| `GET` | `/api/knowledge/index-status` | Статус индексирования |
+| `GET` | `/api/knowledge/items` | Список элементов базы знаний |
+| `GET` | `/api/knowledge/items/:id` | Получить элемент |
+| `POST` | `/api/knowledge/items` | Создать элемент |
+| `PUT` | `/api/knowledge/items/:id` | Обновить элемент |
+| `DELETE` | `/api/knowledge/items/:id` | Удалить элемент |
+| `POST` | `/api/knowledge/scan` | Сканировать директорию и импортировать файлы |
+| `POST` | `/api/knowledge/index` | Перестроить векторный индекс |
+| `GET` | `/api/knowledge/retrieval-logs` | Журнал поисковых запросов |
+| `DELETE` | `/api/knowledge/retrieval-logs/:id` | Удалить запись журнала |
+| `POST` | `/api/knowledge/search` | Поиск по базе знаний |
+
+### Персистентная память
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/memories` | Список записей памяти (с пагинацией и фильтрами) |
+| `GET` | `/api/memories/stats` | Статистика по памяти |
+| `POST` | `/api/memories` | Создать запись |
+| `PUT` | `/api/memories/:id` | Обновить запись |
+| `PATCH` | `/api/memories/:id/status` | Изменить статус записи |
+| `DELETE` | `/api/memories` | Удалить все записи |
+| `DELETE` | `/api/memories/:id` | Удалить запись по ID |
+
+### Файловый менеджер
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/files` | Список файлов |
+| `GET` | `/api/files/stats` | Статистика файлов (кол-во, размер, по типу/статусу) |
+| `GET` | `/api/files/:id` | Получить метаданные файла |
+| `GET` | `/api/files/:id/content` | Прочитать содержимое файла |
+| `POST` | `/api/files/upload` | Загрузить файл (multipart) |
+| `POST` | `/api/files/register` | Зарегистрировать существующий файл |
+| `PUT` | `/api/files/:id` | Обновить метаданные файла |
+| `POST` | `/api/files/:id/log` | Добавить запись в журнал файла |
+| `POST` | `/api/files/:id/findings` | Добавить находки к файлу |
+| `DELETE` | `/api/files/:id` | Удалить файл |
+
+### FOFA (Разведка)
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/fofa/search` | Поиск FOFA (backend-прокси) |
+| `POST` | `/api/fofa/parse` | AI-парсинг запроса на естественном языке → синтаксис FOFA |
+
+### Recon (Multi-engine)
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/recon/fofa/validate` | Валидация FOFA API-ключа |
+| `POST` | `/api/recon/zoomeye/search` | Поиск ZoomEye |
+| `POST` | `/api/recon/zoomeye/validate` | Валидация ZoomEye API-ключа |
+| `POST` | `/api/recon/shodan/search` | Поиск Shodan |
+| `POST` | `/api/recon/shodan/validate` | Валидация Shodan API-ключа |
+| `POST` | `/api/recon/censys/search` | Поиск Censys |
+| `POST` | `/api/recon/censys/validate` | Валидация Censys API-ключа |
+
+### Robot / Чат-боты
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/robot/lark` | Webhook для входящих событий Lark (без авторизации) |
+| `POST` | `/api/robot/test` | Тестовый вызов логики бота |
+
+### Docker
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/docker/status` | Статус контейнера и HTTP health-пробы |
+| `GET` | `/api/docker/logs?lines=200` | Логи контейнера |
+| `POST` | `/api/docker/action` | Lifecycle-действие |
+
+### OpenAPI
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/openapi/spec` | OpenAPI-спецификация (JSON) |
+| `GET` | `/api-docs` | Документация API (HTML-страница) |
+
+---
+
+## Полный справочник конфигурации
+
+```yaml
+# ─── Версия системы ───────────────────────────────────────────────────────────
+version: "v1.4.0"
+
+# ─── Сервер ──────────────────────────────────────────────────────────────────
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+# ─── Авторизация ─────────────────────────────────────────────────────────────
+auth:
+  password: "change-me"           # Автогенерируется если пустой (24-символьный случайный)
+  session_duration_hours: 12
+
+# ─── Логирование ─────────────────────────────────────────────────────────────
+log:
+  level: "info"                   # debug | info | warn | error
+  output: "stdout"                # stdout | stderr | /path/to/file
+
+# ─── AI-провайдер ────────────────────────────────────────────────────────────
+openai:
+  api_key: "sk-xxx"
+  base_url: "https://api.openai.com/v1"
+  model: "gpt-4o"                 # Основная модель
+  tool_model: ""                  # Модель для tool-calling (fallback к model)
+  tool_base_url: ""               # Отдельный эндпоинт для tool-модели
+  tool_api_key: ""                # Отдельный ключ для tool-модели
+  summary_model: ""               # Модель для суммаризации (fallback к model)
+  summary_base_url: ""
+  summary_api_key: ""
+  max_total_tokens: 120000        # Токен-бюджет для сжатия памяти + цепочки атак
+
+# ─── Recon движки ────────────────────────────────────────────────────────────
+fofa:
+  email: ""
+  api_key: ""
+  base_url: "https://fofa.info/api/v1/search/all"
+
+zoomeye:
+  api_key: ""
+
+shodan:
+  api_key: ""
+
+censys:
+  api_id: ""
+  api_secret: ""
+
+# ─── MCP сервер ──────────────────────────────────────────────────────────────
+mcp:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8081
+  allow_remote: false             # true — только если намеренно открываете за localhost
+
+# ─── Федерация внешних MCP ───────────────────────────────────────────────────
+external_mcp:
+  servers:
+    my-server:
+      transport: "http"           # http | sse | stdio | simple_http
+      url: "http://127.0.0.1:9000/mcp"
+      command: ""                 # Для stdio: путь к исполняемому файлу
+      args: []                    # Для stdio: аргументы
+      env: {}                     # Для stdio: переменные окружения
+      headers: {}                 # Для http/sse: заголовки запросов
+      description: "Мой MCP сервер"
+      timeout: 30
+      external_mcp_enable: true
+      tool_enabled: {}            # Переопределение по инструментам: {"tool_name": true/false}
+
+# ─── База данных ─────────────────────────────────────────────────────────────
+database:
+  path: "data/conversations.db"
+  knowledge_db_path: "data/knowledge.db"    # Опционально: отдельная БД для знаний
+
+# ─── Инструменты безопасности ────────────────────────────────────────────────
+security:
+  tools_dir: "tools"                        # Директория YAML-рецептов инструментов
+  tool_description_mode: "full"             # full | short (контроль использования токенов)
+
+# ─── Роли и навыки ───────────────────────────────────────────────────────────
+roles_dir: "roles"
+skills_dir: "skills"
+
+# ─── Агент ───────────────────────────────────────────────────────────────────
+agent:
+  max_iterations: 120
+  large_result_threshold: 102400            # байт; результаты крупнее сохраняются на диск
+  result_storage_dir: "tmp"
+  parallel_tool_execution: true
+  max_parallel_tools: 10                    # 0 = без ограничений
+  tool_retry_count: 5                       # Повторы при временных ошибках
+  parallel_tool_wait_seconds: 60            # Макс. ожидание параллельного инструмента
+  tool_timeout: 300                         # Таймаут выполнения инструмента (сек.)
+
+  time_awareness:
+    enabled: true
+    timezone: "UTC"                         # IANA-имя часового пояса
+
+  memory:
+    enabled: true
+    max_entries: 2000                       # 0 = без ограничений
+
+  file_manager:
+    enabled: true
+    storage_dir: "managed_files"
+
+  cuttlefish:
+    enabled: false
+    cvd_home: ""                            # по умолч.: ~/cuttlefish-workspace
+    memory_mb: 8192
+    cpus: 4
+    disk_mb: 16000
+    gpu_mode: "guest_swiftshader"           # или drm_virgl
+    auto_launch: false
+    russian_identity: false
+    webrtc_port: 8443
+    droidrun_path: ""
+    droidrun_config: ""
+    bridge_script: ""
+    proxy_port: 18090
+    proxy_auto_start: true
+    screenshot_dir: "/tmp/droidrun_screenshots"
+    vision_enabled: true
+
+  sslstrip:
+    enabled: false
+    listen_port: 10000
+    log_dir: "/tmp"
+    auto_proxy: false
+
+# ─── База знаний ─────────────────────────────────────────────────────────────
+knowledge:
+  enabled: true
+  base_path: "knowledge_base"
+  embedding:
+    provider: "openai"
+    model: "text-embedding-3-small"
+    base_url: ""                            # наследует от openai.base_url
+    api_key: ""                             # наследует от openai.api_key
+    max_tokens: 0                           # размер чанка (0 = по умолч. 512)
+  retrieval:
+    top_k: 5
+    similarity_threshold: 0.7
+    hybrid_weight: 0.7                      # 1.0 = чистый вектор, 0.0 = чистый BM25
+
+# ─── Чат-боты ────────────────────────────────────────────────────────────────
+robots:
+  telegram:
+    enabled: false
+    bot_token: ""
+    allowed_user_ids: []                    # пусто = разрешить всем
+
+  lark:
+    enabled: false
+    app_id: ""
+    app_secret: ""
+    verify_token: ""
+```
+
+---
+
+## Формат YAML-рецепта инструмента (`tools/*.yaml`)
+
+```yaml
+name: "nmap"
+command: "nmap"
+args: ["-sT", "-sV", "-sC"]         # Фиксированные аргументы
+enabled: true
+short_description: "Сетевое сканирование и идентификация сервисов"
+description: "Подробное описание для AI-агента..."
+allowed_exit_codes: [0]              # Ненулевые коды, считающиеся успехом
+arg_mapping: "auto"                  # auto | manual | template
+parameters:
+  - name: "target"
+    type: "string"                   # string | int | bool | array
+    description: "IP или домен для сканирования"
+    required: true
+    position: 0                      # Индекс позиционного аргумента
+  - name: "ports"
+    type: "string"
+    flag: "-p"
+    description: "Диапазон портов, напр. 1-1000"
+    format: "combined"               # flag=value | positional | combined | template
+  - name: "output"
+    type: "string"
+    flag: "-oN"
+    template: "{flag} {value}"       # Кастомный шаблон аргумента
+    options: ["-", "/tmp/scan.txt"]  # Список допустимых значений (enum)
+```
+
+---
+
+## Структура внутренних пакетов
+
+```
+internal/
+├── agent/
+│   ├── agent.go                  # Основной цикл AI-агента (ReAct, диспетчер инструментов, SSE)
+│   ├── memory_compressor.go      # Сжатие разговора при приближении к токен-лимиту
+│   ├── persistent_memory.go      # SQLite-хранилище памяти (8 категорий, 4 статуса, 3 уровня достоверности)
+│   ├── rag_context.go            # RAGContextInjector — проактивное получение KB с кешем (TTL 5 мин)
+│   └── time_awareness.go         # Инъекция времени/часового пояса в системные промпты
+│
+├── app/
+│   ├── app.go                    # Загрузка приложения: связывает все подсистемы, Gin-роутер, CORS
+│   └── skill_stats_adapter.go    # Адаптер для записи статистики использования навыков
+│
+├── attackchain/
+│   └── builder.go                # AI-парсинг цепочки атаки (узлы + рёбра, оценка рисков)
+│
+├── config/
+│   └── config.go                 # Все конфиг-структуры, загрузка YAML, сканирование директорий
+│                                 # ролей/инструментов, автогенерация пароля, миграция конфига
+│
+├── database/
+│   ├── database.go               # SQLite init, создание схемы (16+ таблиц), WAL, миграции
+│   ├── conversation.go           # CRUD разговоров и сообщений
+│   ├── attackchain.go            # Персистентность узлов/рёбер цепочки атаки
+│   ├── batch_task.go             # CRUD очередей и задач пакетного выполнения
+│   ├── group.go                  # CRUD групп разговоров с закреплением
+│   ├── monitor.go                # Запись выполнений инструментов и статистика
+│   ├── skill_stats.go            # Статистика использования навыков
+│   └── vulnerability.go          # CRUD уязвимостей с фильтрацией по critical/status
+│
+├── filemanager/
+│   └── filemanager.go            # Отслеживание файлов (7 типов, 6 статусов, метаданные, журнал)
+│
+├── handler/                      # HTTP-хэндлеры (один файл = одна область)
+│   ├── agent.go                  # /api/agent-loop — чат, SSE, отмена, задачи, пакетные очереди
+│   ├── attackchain.go            # /api/attack-chain — генерация и получение
+│   ├── auth.go                   # /api/auth — вход, выход, смена пароля, валидация
+│   ├── batch_task_manager.go     # Управление пакетными задачами (в составе AgentHandler)
+│   ├── config.go                 # /api/config — получение, обновление, инструменты, модели
+│   ├── conversation.go           # /api/conversations — CRUD, закрепление
+│   ├── docker.go                 # /api/docker — статус, логи, lifecycle-действия
+│   ├── external_mcp.go           # /api/external-mcp — управление внешними MCP
+│   ├── filemanager.go            # /api/files — загрузка, CRUD, журнал, находки
+│   ├── fofa.go                   # /api/fofa — поиск и AI-парсинг запросов
+│   ├── group.go                  # /api/groups — управление группами разговоров
+│   ├── knowledge.go              # /api/knowledge — CRUD, сканирование, индексирование, поиск
+│   ├── memory.go                 # /api/memories — CRUD, статистика, статус
+│   ├── monitor.go                # /api/monitor — история выполнений, статистика
+│   ├── openapi.go                # /api/openapi/spec — генерация спецификации
+│   ├── recon.go                  # /api/recon — ZoomEye/Shodan/Censys прокси + валидация ключей
+│   ├── robot.go                  # /api/robot — webhook Lark, тест-вызов бота
+│   ├── role.go                   # /api/roles — CRUD ролей
+│   ├── skills.go                 # /api/skills — CRUD навыков, статистика, привязанные роли
+│   ├── task_manager.go           # Управление задачами агента
+│   ├── terminal.go               # /api/terminal — синхр., SSE-стриминг, WebSocket PTY
+│   ├── terminal_stream_unix.go   # Unix PTY реализация стриминга
+│   ├── terminal_stream_windows.go# Windows реализация стриминга
+│   ├── terminal_ws_unix.go       # Unix WebSocket терминал-хэндлер
+│   └── vulnerability.go          # /api/vulnerabilities — CRUD и статистика
+│
+├── knowledge/
+│   ├── bm25.go                   # Корпусный BM25 Okapi (реальный IDF по всем чанкам)
+│   ├── embedder.go               # Клиент OpenAI Embeddings API
+│   ├── indexer.go                # Чанкинг текста, генерация embeddings, сохранение в БД
+│   ├── manager.go                # Сканер директорий и управление элементами KB
+│   ├── retriever.go              # Гибридный вектор + BM25 поиск со скорингом
+│   ├── tool.go                   # MCP-инструменты (search_knowledge_base и др.)
+│   └── types.go                  # Типы элементов знаний и embeddings
+│
+├── logger/
+│   └── logger.go                 # Структурированный логгер на основе Zap
+│
+├── mcp/
+│   ├── server.go                 # MCP-сервер: регистрация инструментов, HTTP/SSE/stdio хэндлеры
+│   ├── client_sdk.go             # MCP-клиент (modelcontextprotocol/go-sdk)
+│   ├── external_manager.go       # Менеджер внешних MCP соединений (здоровье, lifecycle)
+│   ├── types.go                  # MCP-типы (Tool, ToolResult, Prompt, Resource)
+│   └── builtin/
+│       └── constants.go          # Константы имён встроенных инструментов
+│
+├── openai/
+│   └── openai.go                 # HTTP-клиент для OpenAI-совместимых API (чат, стриминг)
+│
+├── robot/
+│   ├── conn.go                   # Общие утилиты соединения
+│   ├── lark.go                   # Lark (Feishu) постоянное соединение бота
+│   └── telegram.go               # Telegram long-polling бот (multi-user, стриминг прогресса)
+│
+├── security/
+│   ├── auth_manager.go           # Хеширование паролей, управление токенами сессий
+│   ├── auth_middleware.go        # Gin Bearer-token middleware
+│   └── executor.go               # Исполнитель инструментов: subprocess runner, маппинг аргументов,
+│                                 # захват результатов, хранение больших результатов
+│
+├── skills/
+│   ├── manager.go                # Сканер директорий навыков, чтение SKILL.md
+│   └── tool.go                   # MCP-инструменты (list_skills, read_skill)
+│
+└── storage/
+    └── result_storage.go         # Дисковое хранилище результатов с пагинацией, поиском, фильтром
+```
+
+---
+
+## Схема базы данных
+
+### Основная БД (`data/conversations.db`)
+
+| Таблица | Назначение |
+|---------|-----------|
+| `conversations` | Метаданные разговоров (id, заголовок, временные метки, закрепление, ReAct-кеш) |
+| `messages` | Отдельные сообщения (роль, содержимое, ID выполнений инструментов) |
+| `process_details` | Журнал событий стриминга на сообщение (вызовы инструментов, ответы, ошибки) |
+| `tool_executions` | Записи запусков инструментов (имя, аргументы, статус, результат, тайминги) |
+| `tool_stats` | Агрегированная статистика вызовов инструментов |
+| `skill_stats` | Агрегированная статистика использования навыков |
+| `attack_chain_nodes` | Узлы графа атаки (тип, имя, оценка риска, метаданные) |
+| `attack_chain_edges` | Рёбра графа атаки (источник, цель, тип, вес) |
+| `knowledge_retrieval_logs` | Журнал аудита поисковых запросов к KB |
+| `conversation_groups` | Метаданные групп (имя, иконка, закрепление) |
+| `conversation_group_mappings` | Связь многие-ко-многим: разговор ↔ группа |
+| `vulnerabilities` | Записи уязвимостей (критичность, статус, доказательство, рекомендация) |
+| `batch_task_queues` | Метаданные очередей (статус, заголовок, роль, индекс прогресса) |
+| `batch_tasks` | Отдельные задачи (сообщение, conversation_id, статус, результат) |
+| `persistent_memory` | Записи кросс-сессионной памяти (категория, статус, достоверность) |
+| `managed_files` | Записи файлового менеджера (тип, статус, метаданные, журнал, находки) |
+
+### БД знаний (`data/knowledge.db`)
+
+| Таблица | Назначение |
+|---------|-----------|
+| `knowledge_base_items` | Метаданные элементов (категория, заголовок, путь к файлу, содержимое) |
+| `knowledge_embeddings` | Текстовые чанки + векторные embeddings (JSON-массив) |
+| `knowledge_retrieval_logs` | Журнал запросов KB (без FK-ограничений для автономной БД) |
+
+---
+
+## Структура проекта
+
+```
+CyberStrikeAI/
+├── cmd/
+│   ├── server/main.go            # Точка входа HTTP-сервера
+│   ├── mcp-stdio/main.go         # MCP stdio сервер (интеграция с Cursor/IDE)
+│   ├── test-config/main.go       # Утилита валидации конфигурации
+│   ├── test-external-mcp/main.go # Тестировщик подключений внешнего MCP
+│   └── test-sse-mcp-server/      # Тестовый SSE MCP сервер для валидации
+│
+├── internal/                     # Все пакеты приложения (см. выше)
+│
+├── web/
+│   ├── templates/
+│   │   ├── index.html            # SPA-оболочка
+│   │   └── api-docs.html         # Страница документации OpenAPI
+│   └── static/
+│       ├── js/                   # Фронтенд JavaScript
+│       ├── css/                  # Стили
+│       └── favicon.ico / logo.png
+│
+├── tools/                        # 116+ YAML-рецептов инструментов
+├── roles/                        # 14 предустановленных YAML-ролей
+├── skills/                       # 24 предустановленных директории навыков
+├── knowledge_base/               # Markdown-файлы знаний (автоиндексируются)
+│
+├── scripts/
+│   ├── install-enabled-tools.sh           # Установка включённых инструментов (хост)
+│   ├── install-enabled-tools-container.sh # Установка в Docker-контейнер
+│   ├── install-host-tools.sh              # Установка общих хост-зависимостей
+│   ├── install-missing-wordlists.sh       # Установка wordlist'ов
+│   ├── verify-enabled-tools.sh            # Проверка установленных инструментов
+│   ├── test-docker-suite.sh               # Запуск Docker-тестов
+│   ├── install-flaresolverr.sh            # Установка FlareSolverr
+│   ├── flaresolverr-client.py             # Python-клиент FlareSolverr
+│   ├── cuttlefish/                        # Скрипты установки Android VM
+│   └── ghidra/                            # Скрипты Ghidra Headless MCP
+│
+├── docs/
+│   ├── robot_en.md               # Руководство по Telegram и Lark (EN)
+│   ├── docker_en.md              # Руководство по Docker-развёртыванию (EN)
+│   ├── memory_en.md              # Руководство по персистентной памяти (EN)
+│   └── robot.md                  # Руководство по чат-боту (CN)
+│
+├── images/                       # Скриншоты и диаграммы
+├── .github/ISSUE_TEMPLATE/       # Шаблоны bug report и feature request
+├── config.example.yaml           # Полный аннотированный пример конфига
+├── config.docker.yaml            # Docker-специфичный конфиг
+├── Dockerfile                    # Многоэтапная Docker-сборка
+├── docker-compose.yml            # Docker Compose стек
+├── go.mod                        # Go-модуль (Go 1.23+)
+├── requirements.txt              # Python-зависимости для инструментов
+├── run.sh                        # Однокомандный запуск (сборка + старт)
+├── run_docker.sh                 # CLI управления Docker lifecycle
+├── ROADMAP.md                    # Планируемые функции и направление разработки
+└── README.md
+```
+
+---
+
+## Go-зависимости
+
+| Пакет | Назначение |
+|-------|-----------|
+| `github.com/gin-gonic/gin` | HTTP веб-фреймворк и маршрутизация |
+| `github.com/mattn/go-sqlite3` | SQLite3 драйвер (CGO) |
+| `github.com/modelcontextprotocol/go-sdk` | Официальный MCP Go SDK |
+| `github.com/gorilla/websocket` | WebSocket поддержка (терминал) |
+| `github.com/creack/pty` | PTY (псевдо-терминал) для интерактивных инструментов |
+| `github.com/google/uuid` | Генерация UUID |
+| `github.com/pkoukk/tiktoken-go` | Подсчёт токенов для управления контекстом |
+| `github.com/larksuite/oapi-sdk-go/v3` | Lark (Feishu) SDK для бота |
+| `go.uber.org/zap` | Структурированное логирование |
+| `gopkg.in/yaml.v3` | YAML-парсинг для конфигов и рецептов инструментов |
+
+---
+
+## Примеры использования
+
+### Базовые команды
+
+```
+Сканировать открытые порты на 192.168.1.1
+Выполнить комплексное сканирование портов 80, 443, 22 на 192.168.1.1
+Проверить https://example.com/page?id=1 на SQL-инъекцию
+Найти скрытые директории и устаревшее ПО на https://example.com
+Перечислить субдомены example.com, затем запустить nuclei против живых хостов
+Поищи в базе знаний техники эксплуатации XSS
+Запомни учётные данные: admin:P@ssw0rd123 для цели 10.10.10.5
+```
+
+### Продвинутые плейбуки
+
+```
+Загрузи роль Penetration Testing, запусти amass и subfinder для example.com,
+затем перебери директории на каждом живом хосте и сохрани находки в уязвимости.
+
+Используй Ghidra MCP сервер для декомпиляции /tmp/target.elf и поиска переполнений буфера.
+
+Создай очередь пакетных задач: (1) nmap сканирование 192.168.1.0/24,
+(2) nuclei по всем живым хостам, (3) sqlmap по всем веб-сервисам,
+(4) построить граф цепочки атаки.
+
+Запусти Cuttlefish Android VM, установи com.target.app, направь трафик через SSLStrip,
+перехвати учётные данные при входе, сохрани в персистентную память.
+
+Построй цепочку атаки для текущего пентеста и экспортируй все узлы с severity >= high.
+```
+
+---
+
+## Встроенные защиты
+
+- **Валидация обязательных полей** — предотвращает сохранение пустых API-ключей.
+- **Автогенерация надёжного пароля** — 24-символьный криптографически случайный пароль; автозапись в `config.yaml`.
+- **Единый auth middleware** — Bearer-token проверка на каждый API и веб-вызов.
+- **Таймаут инструментов** — настраиваемый лимит выполнения (`tool_timeout`).
+- **Лимиты размера результатов** — данные сверх порога на диске, не в SQLite.
+- **Параллельная безопасность** — настраиваемый лимит конкурентности (`max_parallel_tools`).
+- **Повторы при ошибках** — транзитные ошибки повторяются до `tool_retry_count` раз.
+
+---
+
+## Связанная документация
+
+| Документ | Описание |
+|----------|----------|
+| [Robot / Chatbot Guide](docs/robot_en.md) | Полная установка, команды и решение проблем для Lark и Telegram |
+| [Docker Guide](docs/docker_en.md) | Docker-развёртывание, lifecycle, прокси/VPN, Settings UI |
+| [Memory Guide](docs/memory_en.md) | Категории памяти, инструменты агента, панель Memory UI, API |
+| [Tool Configuration Guide](tools/README.md) | Как писать, настраивать и расширять YAML-рецепты инструментов |
+| [Role Configuration Guide](roles/README.md) | Как создавать и управлять ролями тестирования безопасности |
+| [Skills System Guide](skills/README.md) | Как создавать и привязывать навыки к ролям |
+| [Roadmap](ROADMAP.md) | Планируемые функции и направление разработки |
+
+---
+
+## ⚠️ Отказ от ответственности
+
+**Этот инструмент предназначен исключительно для образовательных целей и авторизованного тестирования!**
+
+CyberStrikeAI — профессиональная платформа тестирования безопасности, предназначенная для помощи исследователям безопасности, пентестерам и IT-специалистам в проведении оценок безопасности **с явного письменного разрешения владельца целевой системы**.
+
+**Используя этот инструмент, вы соглашаетесь:**
+- Использовать инструмент только на системах, для которых у вас есть явное письменное разрешение
+- Соблюдать все применимые законы, нормативные акты и этические стандарты
+- Нести полную ответственность за любое несанкционированное использование
+- Не использовать инструмент в незаконных или вредоносных целях
+
+**Разработчики не несут ответственности за неправомерное использование!**
+
+---
+
+Нужна помощь или хотите внести вклад? Открывайте issue или PR — вклады сообщества приветствуются!
+
+Смотрите [ROADMAP.md](ROADMAP.md) для планируемых функций.
