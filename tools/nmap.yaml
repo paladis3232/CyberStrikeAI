@@ -1,84 +1,108 @@
 name: "nmap"
 command: "nmap"
-# Default: TCP connect scan + version detection + default NSE scripts (works without root)
-args: ["-sT", "-sV", "-sC"]
+args: ["-sT", "-sV", "-sC"] # Fixed parameters: TCP connect scan, version detection, default scripts
 enabled: true
-short_description: "Network scan: ports/services/scripts; optional timing, custom NSE, OS detection (requires root)"
+# Short description (for tool list, reduces token consumption) - one sentence describing tool purpose
+short_description: "Network scanning tool for discovering network hosts, open ports, and services"
+# Detailed tool description - helps the AI model understand tool purpose and use cases
 description: |
-  Network mapping and port scanning tool.
+  Network mapping and port scanning tool for discovering hosts, services, and open ports in a network.
 
-  **Default behavior (only target/ports needed):**
-  - `-sT` TCP connect scan (no root required)
-  - `-sV` version detection
-  - `-sC` default NSE scripts
+  **Key Features:**
+  - Host discovery: Detect active hosts in the network
+  - Port scanning: Identify open ports on target hosts
+  - Service identification: Detect service types and versions running on ports
+  - OS detection: Identify the operating system of target hosts
+  - Vulnerability detection: Use NSE scripts to detect common vulnerabilities
 
-  **Optional enhancements:**
-  - `timing`: `-T0`–`-T5` timing templates
-  - `nse_scripts`: `--script` custom scripts (e.g. `vuln`, `http-*`)
-  - `os_detection`: `-O` **requires root**; keep false without root
-  - `aggressive`: `-A` **requires root** (includes OS detection)
-  - `scan_type`: if set, **replaces** the default `-sT -sV -sC`; write all desired options yourself (e.g. `-sT -sV`)
+  **Use Cases:**
+  - Network asset discovery and enumeration
+  - Security assessment and penetration testing
+  - Network troubleshooting
+  - Port and service auditing
 
   **Notes:**
-  - `-sS` SYN scan requires root; use default or `-sT` without root
-  - Full port scan `1-65535` is very slow; start with common ports
-  - Ensure you have permission to scan the target
+  - Uses -sT (TCP connect scan) instead of -sS (SYN scan), because -sS requires root privileges
+  - Scan speed depends on network latency and target response
+  - Some scans may be detected by firewalls or IDS
+  - Ensure you have permission to scan the target network
+# Parameter definitions
 parameters:
   - name: "target"
     type: "string"
     description: |
-      Target IP, hostname, CIDR, or domain; URLs will have the host extracted automatically.
-      Examples: `192.168.1.1`, `10.0.0.0/24`, `example.com`
+      Target IP address or domain name. Can be a single IP, IP range, CIDR format, or domain name.
+
+      **Example values:**
+      - Single IP: "192.168.1.1"
+      - IP range: "192.168.1.1-100"
+      - CIDR: "192.168.1.0/24"
+      - Domain: "example.com"
+      - URL: "https://example.com" (domain part will be extracted automatically)
+
+      **Notes:**
+      - If a URL is provided, the domain part will be extracted automatically
+      - Ensure the target address format is correct
+      - Required parameter, cannot be empty
     required: true
-    position: 1
+    position: 1 # Positional parameter, placed at the end of the command
     format: "positional"
   - name: "ports"
     type: "string"
     description: |
-      Port range. Examples: `80`, `1-1000`, `80,443,8080`, `1-65535` (full scan is slow)
+      Port range to scan. Can be a single port, port range, comma-separated port list, or special value.
+
+      **Example values:**
+      - Single port: "80"
+      - Port range: "1-1000"
+      - Multiple ports: "80,443,8080,8443"
+      - Combined: "80,443,8000-9000"
+      - Common ports: "1-1024"
+      - All ports: "1-65535"
+      - Quick scan: "80,443,22,21,25,53,110,143,993,995"
+
+      **Notes:**
+      - If not specified, will scan the default 1000 common ports
+      - Scanning all ports (1-65535) can be very time-consuming
+      - Recommended to scan common ports first, then decide whether to scan all ports based on results
     required: false
     flag: "-p"
     format: "flag"
-  - name: "timing"
-    type: "string"
-    description: "Timing template T0–T5; higher = faster. Example: `4` generates `-T4`"
-    required: false
-    format: "template"
-    template: "-T{value}"
-  - name: "nse_scripts"
-    type: "string"
-    description: "NSE scripts passed to `--script`. Examples: `vuln`, `http-title,http-headers`"
-    required: false
-    flag: "--script"
-    format: "flag"
-  - name: "os_detection"
-    type: "bool"
-    description: |
-      Enable `-O` OS detection. **Requires root**; keep false without root.
-    required: false
-    flag: "-O"
-    format: "flag"
-    default: false
-  - name: "aggressive"
-    type: "bool"
-    description: |
-      Enable `-A` aggressive scan (includes OS detection). **Requires root**; keep false without root.
-    required: false
-    flag: "-A"
-    format: "flag"
-    default: false
   - name: "scan_type"
     type: "string"
     description: |
-      Scan type options; **if set, replaces the default `-sT -sV -sC`**, keeping only what you write.
-      Separate multiple options with spaces, e.g. `-sT -sV`, `-sU` (UDP).
+      Scan type options. Can override the default scan type.
+
+      **Common options:**
+      - "-sV": Version detection
+      - "-sC": Default script scan
+      - "-sS": SYN scan (requires root privileges)
+      - "-sT": TCP connect scan (default)
+      - "-sU": UDP scan
+      - "-A": Comprehensive scan (OS detection, version detection, script scanning, traceroute)
+
+      **Notes:**
+      - Multiple options can be combined, separated by spaces, e.g.: "-sV -sC"
+      - Defaults already include "-sT -sV -sC"
+      - If this parameter is specified, it will replace the default scan type
     required: false
     format: "template"
     template: "{value}"
   - name: "additional_args"
     type: "string"
     description: |
-      Extra arguments appended to the command, space-separated.
-      Examples: `--max-retries 3`, `-v`, `-Pn`
+      Additional Nmap parameters. Used to pass Nmap options not defined in the parameter list.
+
+      **Example values:**
+      - "--script vuln": Run vulnerability detection scripts
+      - "-O": OS detection
+      - "-T4": Timing template (0-5, higher number is faster)
+      - "--max-retries 3": Maximum number of retries
+      - "-v": Verbose output
+
+      **Notes:**
+      - Multiple parameters separated by spaces
+      - Ensure parameter format is correct to avoid command injection
+      - This parameter will be appended directly to the end of the command
     required: false
     format: "positional"

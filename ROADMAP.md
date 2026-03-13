@@ -21,7 +21,7 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 - ✅ AI agent engine with OpenAI-compatible model support (GPT, Claude, DeepSeek, etc.)
 - ✅ Native MCP implementation — HTTP, stdio, and SSE transports
 - ✅ External MCP federation (HTTP / stdio / SSE modes)
-- ✅ 100+ prebuilt tool recipes in YAML
+- ✅ 140+ prebuilt tool recipes in YAML
 - ✅ YAML-based tool extension system (hot-reload from `tools/` directory)
 - ✅ Large-result pagination, compression, and searchable archives
 - ✅ SQLite persistence for conversations, vulnerabilities, and audit logs
@@ -30,8 +30,8 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 - ✅ **Docker lifecycle management** — deploy, update, start, stop, restart, remove via `run_docker.sh` or System Settings UI; REST API (`/api/docker/status`, `/api/docker/logs`, `/api/docker/action`); proxy (SOCKS/HTTP/Tor) and VPN-container modes
 
 ### Security Testing Features
-- ✅ Role-based testing system (13 predefined roles: Penetration Testing, CTF, Web App Scanning, API Security, Binary Analysis, Cloud Security Audit, etc.)
-- ✅ Skills system (20+ predefined skills: SQL injection, XSS, API security, container security, etc.)
+- ✅ Role-based testing system (13 predefined roles: Penetration Testing, CTF, Web App Scanning, API Security, Binary Analysis, Cloud Security Audit, Digital Forensics, Container Security, Post-Exploitation, etc.)
+- ✅ Skills system (24 predefined skills: SQL injection, XSS, API security, container security, mobile app security, Android reverse engineering, LDAP/XPath injection, etc.)
 - ✅ Attack-chain graph with severity scoring and step-by-step replay
 - ✅ Vulnerability management — CRUD, severity/status tracking, statistics
 - ✅ Batch task management — create queues, add tasks, sequential execution with full status tracking
@@ -41,7 +41,7 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 - ✅ FOFA / ZoomEye search engine integration
 
 ### Agent Intelligence
-- ✅ **Persistent memory** — cross-session key-value store (SQLite-backed) with categories (credential, target, vulnerability, fact, note); survives conversation compression; exposed as four agent tools (`store_memory`, `retrieve_memory`, `list_memories`, `delete_memory`); tool results automatically persisted as `tool_run` memory entries
+- ✅ **Persistent memory** — cross-session key-value store (SQLite-backed) with 8 categories (credential, target, vulnerability, fact, note, tool_run, discovery, plan); survives conversation compression; exposed as four agent tools (`store_memory`, `retrieve_memory`, `list_memories`, `delete_memory`); tool results automatically persisted as `tool_run` memory entries
 - ✅ **Agent introspection** — before every major action the agent runs a mandatory memory-similarity check and knowledge-base preflight; entity-based memory lookup for IP/domain targets; `<memory_similarity_context>` injected into system prompt to prevent duplicate scans
 - ✅ **Time awareness** — current date/time, timezone, and session age automatically injected into every system prompt; configurable via `agent.time_awareness`; `get_current_time` tool for on-demand queries
 
@@ -67,7 +67,7 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 
 ### UI / UX
 - 📋 **Fully translated English UI** — complete localization of all UI text (in progress in this release)
-- ✅ **Dark / light theme toggle** — user-configurable color scheme (CSS variables + localStorage persistence)
+- ✅ **Dark / light theme toggle** — user-configurable dark/light color scheme; toggle button in the header; preference persisted in localStorage
 - 📋 **Improved attack-chain export** — export as PDF, PNG, or JSON for reporting
 - 📋 **Vulnerability report generator** — one-click HTML/Markdown pentest report from discovered vulnerabilities
 - 📋 **Real-time collaboration** — allow multiple users to observe or join a running session
@@ -144,7 +144,7 @@ See [README.md](README.md) for development setup instructions.
 
 ---
 
-*Last updated: 2026-03-13 — Docker lifecycle management shipped; agent introspection (memory similarity + KB preflight) shipped; tool-result memory auto-persistence shipped; Memory UI paginated loading and filters shipped; dark/light theme toggle shipped. This roadmap is subject to change. Follow the repository to stay updated.*
+*Last updated: 2026-03-13 — v1.4.0: dark/light theme toggle shipped; persistent memory expanded to 8 categories (tool_run, discovery, plan added); tool count grown to 140+; skills count grown to 24 (Android reverse engineering, mobile app security, LDAP/XPath injection added). This roadmap is subject to change. Follow the repository to stay updated.*
 
 ---
 
