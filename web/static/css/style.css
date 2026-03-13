@@ -1,4 +1,4 @@
-* {
+﻿* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -22,6 +22,87 @@
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== DARK THEME ===== */
+[data-theme="dark"] {
+    --primary-color: #e0e0e0;
+    --secondary-color: #b0b0b0;
+    --accent-color: #4d9fff;
+    --accent-hover: #66afff;
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --bg-tertiary: #0f3460;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0b0;
+    --text-muted: #606080;
+    --border-color: #2a2a4a;
+    --success-color: #34d058;
+    --warning-color: #f9c513;
+    --error-color: #f85149;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+/* Theme toggle button */
+.theme-toggle-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--accent-color);
+}
+
+.theme-toggle-btn svg {
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+}
+
+.theme-toggle-btn:hover svg {
+    transform: rotate(20deg);
+}
+
+/* Dark theme adjustments for sidebar gradient */
+[data-theme="dark"] .main-sidebar {
+    background: linear-gradient(180deg, #1e1e3a 0%, #16213e 100%);
+}
+
+/* Dark theme for inputs and textareas */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+/* Dark theme for cards and panels */
+[data-theme="dark"] .card,
+[data-theme="dark"] .panel,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .settings-card {
+    background: var(--bg-primary);
+    border-color: var(--border-color);
+}
+
+/* Dark theme code blocks */
+[data-theme="dark"] pre,
+[data-theme="dark"] code {
+    background: #0d1117;
+    color: #c9d1d9;
 }
 
 body {
