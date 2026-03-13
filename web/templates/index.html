@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -39,6 +39,23 @@
                 </div>
                 <div class="header-right">
                     <div class="header-actions">
+                        <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Переключить тёмную/светлую тему">
+                            <svg id="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:none">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
+                                <line x1="12" y1="1" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <line x1="12" y1="21" x2="12" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <line x1="1" y1="12" x2="3" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <line x1="21" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            <span id="theme-label">Light</span>
+                        </button>
                         <button class="openapi-doc-btn" onclick="window.open('/api-docs', '_blank')" title="OpenAPI Docs">
                             <span>API Docs</span>
                         </button>
@@ -3022,5 +3039,39 @@ Skill content goes here...</small>
     <script src="/static/js/roles.js"></script>
     <script src="/static/js/memory.js"></script>
     <script src="/static/js/filemanager.js"></script>
+    <script>
+        // ===== THEME TOGGLE =====
+        (function() {
+            const THEME_KEY = 'cyberstrike_theme';
+
+            function applyTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                const moonIcon = document.getElementById('theme-icon-moon');
+                const sunIcon = document.getElementById('theme-icon-sun');
+                const label = document.getElementById('theme-label');
+                if (theme === 'dark') {
+                    if (moonIcon) moonIcon.style.display = 'block';
+                    if (sunIcon) sunIcon.style.display = 'none';
+                    if (label) label.textContent = 'Dark';
+                } else {
+                    if (moonIcon) moonIcon.style.display = 'none';
+                    if (sunIcon) sunIcon.style.display = 'block';
+                    if (label) label.textContent = 'Light';
+                }
+            }
+
+            window.toggleTheme = function() {
+                const current = document.documentElement.getAttribute('data-theme') || 'light';
+                const next = current === 'dark' ? 'light' : 'dark';
+                localStorage.setItem(THEME_KEY, next);
+                applyTheme(next);
+            };
+
+            // Apply saved theme on load
+            const saved = localStorage.getItem(THEME_KEY) ||
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            applyTheme(saved);
+        })();
+    </script>
 </body>
 </html>
