@@ -1,166 +1,166 @@
-# CyberStrikeAI Roadmap
+# CyberStrikeAI — Дорожная карта
 
-This roadmap outlines the planned development trajectory for CyberStrikeAI. Items are grouped by theme and approximate horizon. Priorities may shift based on community feedback—open an issue or PR to influence the direction.
-
----
-
-## Legend
-
-| Symbol | Meaning |
-|--------|---------|
-| ✅ | Shipped / Available |
-| 🚧 | In Progress |
-| 📋 | Planned |
-| 💡 | Under Consideration |
+Дорожная карта описывает планируемое развитие CyberStrikeAI. Элементы сгруппированы по теме и приблизительному горизонту. Приоритеты могут меняться в зависимости от обратной связи сообщества — открывайте issue или PR, чтобы повлиять на направление.
 
 ---
 
-## Released (v1.x)
+## Обозначения
 
-### Core Platform
-- ✅ AI agent engine with OpenAI-compatible model support (GPT, Claude, DeepSeek, etc.)
-- ✅ Native MCP implementation — HTTP, stdio, and SSE transports
-- ✅ External MCP federation (HTTP / stdio / SSE modes)
-- ✅ 100+ prebuilt tool recipes in YAML
-- ✅ YAML-based tool extension system (hot-reload from `tools/` directory)
-- ✅ Large-result pagination, compression, and searchable archives
-- ✅ SQLite persistence for conversations, vulnerabilities, and audit logs
-- ✅ Password-protected Web UI with Bearer-token auth and session management
-- ✅ Streaming SSE output for real-time task progress
-- ✅ **Docker lifecycle management** — deploy, update, start, stop, restart, remove via `run_docker.sh` or System Settings UI; REST API (`/api/docker/status`, `/api/docker/logs`, `/api/docker/action`); proxy (SOCKS/HTTP/Tor) and VPN-container modes
-
-### Security Testing Features
-- ✅ Role-based testing system (13 predefined roles: Penetration Testing, CTF, Web App Scanning, API Security, Binary Analysis, Cloud Security Audit, etc.)
-- ✅ Skills system (20+ predefined skills: SQL injection, XSS, API security, container security, etc.)
-- ✅ Attack-chain graph with severity scoring and step-by-step replay
-- ✅ Vulnerability management — CRUD, severity/status tracking, statistics
-- ✅ Batch task management — create queues, add tasks, sequential execution with full status tracking
-- ✅ Knowledge base with vector search and hybrid (vector + BM25 keyword) retrieval
-- ✅ **Corpus-level BM25 Okapi** — real inverse document frequency scoring built from all indexed chunks; replaces the previous per-document approximation
-- ✅ Auto-indexing of Markdown knowledge files with incremental updates
-- ✅ FOFA / ZoomEye search engine integration
-
-### Agent Intelligence
-- ✅ **Persistent memory** — cross-session key-value store (SQLite-backed) with categories (credential, target, vulnerability, fact, note); survives conversation compression; exposed as four agent tools (`store_memory`, `retrieve_memory`, `list_memories`, `delete_memory`); tool results automatically persisted as `tool_run` memory entries
-- ✅ **Agent introspection** — before every major action the agent runs a mandatory memory-similarity check and knowledge-base preflight; entity-based memory lookup for IP/domain targets; `<memory_similarity_context>` injected into system prompt to prevent duplicate scans
-- ✅ **Time awareness** — current date/time, timezone, and session age automatically injected into every system prompt; configurable via `agent.time_awareness`; `get_current_time` tool for on-demand queries
-
-### Integrations & UX
-- ✅ Lark (Feishu) chatbot via persistent long-lived connections
-- ✅ Telegram bot via long-polling — multi-user, progress streaming, MCP tool control, role and conversation management; configurable via Web UI
-- ✅ Web console with terminal, task monitor, conversation groups, and role selector
-- ✅ Conversation grouping — pinning, renaming, batch management
-- ✅ MCP stdio mode for Cursor / IDE integration
-- ✅ OpenAPI documentation endpoint
+| Символ | Значение |
+|--------|----------|
+| ✅ | Выпущено / Доступно |
+| 🚧 | В разработке |
+| 📋 | Запланировано |
+| 💡 | На рассмотрении |
 
 ---
 
-## Near-Term (Next 1–2 Releases)
+## Выпущено (v1.x)
 
-### Agent & Orchestration
-- ✅ **Parallel tool execution** — agent fans out independent tool calls concurrently to reduce total time on multi-step engagements
-- ✅ **Agent memory improvements** — persistent cross-session memory store with category tagging; BM25 corpus index for smarter knowledge retrieval; paginated Memory UI with scrolling and category filters
-- ✅ **Memory UI panel** — web interface to view, search, edit, and delete persistent memory entries; category filters; stats strip; bulk delete; paginated loading
-- 📋 **Memory expiry / TTL** — optional time-to-live on memory entries so stale facts are automatically purged
-- 📋 **Structured task templates** — YAML-defined recon/pentest playbooks that the agent can load and execute end-to-end
-- 📋 **Tool chaining macros** — define multi-step pipelines (e.g., subfinder → httpx → nuclei) as a single named operation
+### Ядро платформы
+- ✅ AI-движок с поддержкой OpenAI-совместимых моделей (GPT, Claude, DeepSeek и др.)
+- ✅ Нативная реализация MCP — HTTP, stdio и SSE транспорты
+- ✅ Федерация внешних MCP (HTTP / stdio / SSE режимы)
+- ✅ 100+ предустановленных рецептов инструментов в YAML
+- ✅ Система расширения инструментов на базе YAML (горячая перезагрузка из директории `tools/`)
+- ✅ Пагинация, сжатие и поиск по большим результатам
+- ✅ SQLite-персистентность для разговоров, уязвимостей и журналов аудита
+- ✅ Защищённый веб-интерфейс с Bearer-token авторизацией и управлением сессиями
+- ✅ SSE-стриминг вывода для отслеживания прогресса задач в реальном времени
+- ✅ **Управление жизненным циклом Docker** — deploy, update, start, stop, restart, remove через `run_docker.sh` или UI настроек системы; REST API (`/api/docker/status`, `/api/docker/logs`, `/api/docker/action`); режимы прокси (SOCKS/HTTP/Tor) и VPN-контейнера
+
+### Функции тестирования безопасности
+- ✅ Система ролевого тестирования (13 предустановленных ролей: Penetration Testing, CTF, Web App Scanning, API Security, Binary Analysis, Cloud Security Audit и др.)
+- ✅ Система навыков (20+ предустановленных навыков: SQL-инъекции, XSS, API-безопасность, безопасность контейнеров и др.)
+- ✅ Граф цепочки атаки с оценкой критичности и пошаговым воспроизведением
+- ✅ Управление уязвимостями — CRUD, отслеживание критичности/статуса, статистика
+- ✅ Пакетное управление задачами — создание очередей, добавление задач, последовательное выполнение с полным отслеживанием статуса
+- ✅ База знаний с векторным поиском и гибридным (вектор + BM25) поиском
+- ✅ **Корпусный BM25 Okapi** — реальный скоринг обратной частоты документа по всем индексированным чанкам; заменяет предыдущее поодокументное приближение
+- ✅ Автоиндексирование Markdown-файлов знаний с инкрементальными обновлениями
+- ✅ Интеграция поисковых движков FOFA / ZoomEye
+
+### Интеллект агента
+- ✅ **Персистентная память** — кросс-сессионное key-value хранилище (SQLite) с категориями (credential, target, vulnerability, fact, note); переживает сжатие разговора; четыре инструмента агента (`store_memory`, `retrieve_memory`, `list_memories`, `delete_memory`); результаты инструментов автоматически сохраняются как записи `tool_run`
+- ✅ **Интроспекция агента** — перед каждым крупным действием агент выполняет обязательную проверку похожести памяти и preflight базы знаний; entity-based поиск в памяти по IP/доменам; `<memory_similarity_context>` инжектируется в системный промпт для предотвращения дублирующихся сканирований
+- ✅ **Осведомлённость о времени** — текущая дата/время, часовой пояс и возраст сессии автоматически инжектируются в каждый системный промпт; настраивается через `agent.time_awareness`; инструмент `get_current_time` для запросов по требованию
+
+### Интеграции и UX
+- ✅ Lark (Feishu) чат-бот через постоянные долгоживущие соединения
+- ✅ Telegram-бот через long-polling — мультипользовательский, стриминг прогресса, управление MCP-инструментами, ролями и разговорами; настройка через Web UI
+- ✅ Веб-консоль с терминалом, монитором задач, группами разговоров и выбором роли
+- ✅ Группировка разговоров — закрепление, переименование, пакетное управление
+- ✅ MCP stdio режим для интеграции с Cursor / IDE
+- ✅ Эндпоинт документации OpenAPI
+
+---
+
+## Краткосрочные планы (следующие 1–2 релиза)
+
+### Агент и оркестрация
+- ✅ **Параллельное выполнение инструментов** — агент распараллеливает независимые вызовы инструментов для сокращения общего времени на многошаговых заданиях
+- ✅ **Улучшения памяти агента** — персистентное кросс-сессионное хранилище с тегированием по категориям; корпусный BM25 индекс для более умного поиска знаний; панель Memory UI с прокруткой и фильтрами по категориям
+- ✅ **Панель Memory UI** — веб-интерфейс для просмотра, поиска, редактирования и удаления записей персистентной памяти; фильтры по категориям; строка статистики; массовое удаление; постраничная загрузка
+- 📋 **Срок жизни / TTL памяти** — опциональное время жизни записей памяти для автоматической очистки устаревших фактов
+- 📋 **Структурированные шаблоны задач** — YAML-определённые плейбуки разведки/пентеста, которые агент может загружать и выполнять end-to-end
+- 📋 **Макросы цепочек инструментов** — определение многошаговых конвейеров (например, subfinder → httpx → nuclei) как одной именованной операции
 
 ### UI / UX
-- 📋 **Fully translated English UI** — complete localization of all UI text (in progress in this release)
-- 📋 **Dark / light theme toggle** — user-configurable color scheme
-- 📋 **Improved attack-chain export** — export as PDF, PNG, or JSON for reporting
-- 📋 **Vulnerability report generator** — one-click HTML/Markdown pentest report from discovered vulnerabilities
-- 📋 **Real-time collaboration** — allow multiple users to observe or join a running session
+- 📋 **Полностью переведённый UI на английский** — полная локализация всех текстов интерфейса (в процессе в этом релизе)
+- 📋 **Переключатель тёмной/светлой темы** — пользовательская цветовая схема
+- 📋 **Улучшенный экспорт цепочки атаки** — экспорт в PDF, PNG или JSON для отчётности
+- 📋 **Генератор отчёта об уязвимостях** — HTML/Markdown отчёт о пентесте по обнаруженным уязвимостям одним кликом
+- 📋 **Совместная работа в реальном времени** — возможность для нескольких пользователей наблюдать или подключаться к активной сессии
 
-### Integrations
-- 📋 **Slack / Teams bot** — extend the chatbot system to Slack and Microsoft Teams
-- 📋 **Webhook notifications** — send task completion, vulnerability discovery, or attack-chain events to external systems (Slack, PagerDuty, etc.)
-- 📋 **JIRA / GitHub Issues integration** — automatically create issues from discovered vulnerabilities
-- 📋 **Telegram inline keyboard** — add interactive buttons (confirm/cancel actions, quick role switching) to Telegram bot responses
-- 📋 **Telegram file transfer** — send large tool output as downloadable files when the result exceeds the message size limit
-
----
-
-## Mid-Term (3–6 Months)
-
-### AI & Automation
-- 📋 **Multi-model routing** — automatically select the best model (reasoning model for complex planning, faster model for tool execution) to optimize cost and latency
-- 📋 **Autonomous recon-to-report pipeline** — fully automated end-to-end pentest workflow from target scoping to final report generation
-- ✅ **RAG-enhanced agent** — deeper integration of the knowledge base into agent decision-making for better tool selection and exploit guidance; proactive context injection based on task semantics
-- 📋 **Custom agent personas** — allow organizations to define their own agent behavior, escalation rules, and toolset restrictions
-- 📋 **Fine-tuned security model support** — tested integration with security-focused fine-tuned models
-
-### Security & Compliance
-- 📋 **Multi-user RBAC** — role-based access control with user accounts, scoped permissions (read-only analyst, full operator, admin)
-- 📋 **Audit log export** — export structured audit logs (JSON / SYSLOG) to SIEM systems
-- 📋 **Engagement scoping** — define authorized target scope and enforce tool/output restrictions within scope boundaries
-- 📋 **Data retention policies** — auto-purge or archive old conversations and results
-
-### Tool Ecosystem
-- 📋 **Tool marketplace / registry** — community-contributed tool recipes with one-click import
-- 📋 **Tool sandboxing** — optional Docker/container isolation for each tool invocation
-- 📋 **Tool health monitoring** — detect missing or misconfigured tools and suggest installation commands
-- 📋 **Burp Suite extension** — native Burp extension for bi-directional traffic sharing with CyberStrikeAI
-
-### Knowledge Base
-- 📋 **Auto-knowledge ingestion** — automatically import CVE details, exploit-db entries, and security advisories into the knowledge base
-- 📋 **Knowledge base sharing** — export and import knowledge bases as portable bundles
-- 📋 **Semantic deduplication** — automatically merge near-duplicate knowledge items
-- 📋 **BM25 index persistence** — store the BM25 corpus index on disk so it does not need to be rebuilt on every startup
+### Интеграции
+- 📋 **Slack / Teams бот** — расширение системы чат-ботов на Slack и Microsoft Teams
+- 📋 **Webhook-уведомления** — отправка событий завершения задач, обнаружения уязвимостей или цепочки атаки во внешние системы (Slack, PagerDuty и др.)
+- 📋 **Интеграция с JIRA / GitHub Issues** — автоматическое создание задач из обнаруженных уязвимостей
+- 📋 **Inline-клавиатура Telegram** — добавление интерактивных кнопок (подтверждение/отмена действий, быстрое переключение ролей) в ответы Telegram-бота
+- 📋 **Передача файлов через Telegram** — отправка больших результатов инструментов в виде загружаемых файлов при превышении лимита сообщения
 
 ---
 
-## Long-Term / Under Consideration
+## Среднесрочные планы (3–6 месяцев)
 
-### Platform
-- 💡 **Web-based IDE / notebook** — Jupyter-like interface for scripting custom pentest workflows
-- 💡 **Plugin architecture** — first-class SDK for third-party integrations beyond MCP
-- 💡 **Distributed agent execution** — run agents across multiple nodes for large-scale assessments
-- 💡 **API gateway proxy** — transparent security testing proxy mode for API testing
-- 💡 **Mobile app** — native iOS/Android companion app
+### AI и автоматизация
+- 📋 **Маршрутизация между моделями** — автоматический выбор лучшей модели (модель рассуждений для сложного планирования, быстрая модель для выполнения инструментов) для оптимизации стоимости и задержки
+- 📋 **Автономный конвейер от разведки до отчёта** — полностью автоматизированный end-to-end рабочий процесс пентеста от определения цели до генерации итогового отчёта
+- ✅ **RAG-улучшенный агент** — более глубокая интеграция базы знаний в принятие решений агента для лучшего выбора инструментов и рекомендаций по эксплойтам; проактивная инжекция контекста на основе семантики задачи
+- 📋 **Кастомные персоны агента** — возможность для организаций определять собственное поведение агента, правила эскалации и ограничения инструментов
+- 📋 **Поддержка дообученных моделей безопасности** — проверенная интеграция с security-focused fine-tuned моделями
+
+### Безопасность и соответствие требованиям
+- 📋 **Многопользовательский RBAC** — контроль доступа на основе ролей с учётными записями пользователей, ограниченными правами (аналитик только для чтения, полный оператор, администратор)
+- 📋 **Экспорт журнала аудита** — экспорт структурированных журналов аудита (JSON / SYSLOG) в SIEM-системы
+- 📋 **Область действия задания** — определение авторизованной области целей и применение ограничений инструментов/вывода в рамках области
+- 📋 **Политики хранения данных** — автоматическая очистка или архивирование старых разговоров и результатов
+
+### Экосистема инструментов
+- 📋 **Маркетплейс / реестр инструментов** — рецепты инструментов от сообщества с импортом одним кликом
+- 📋 **Песочница инструментов** — опциональная Docker/контейнерная изоляция для каждого вызова инструмента
+- 📋 **Мониторинг здоровья инструментов** — обнаружение отсутствующих или неверно настроенных инструментов с предложением команд установки
+- 📋 **Расширение Burp Suite** — нативное расширение Burp для двунаправленного обмена трафиком с CyberStrikeAI
+
+### База знаний
+- 📋 **Автоматическое пополнение базы знаний** — автоматический импорт CVE, записей exploit-db и бюллетеней безопасности
+- 📋 **Обмен базой знаний** — экспорт и импорт баз знаний как переносимых пакетов
+- 📋 **Семантическая дедупликация** — автоматическое слияние почти дублирующихся элементов знаний
+- 📋 **Персистентность BM25 индекса** — хранение корпусного BM25 индекса на диске для избежания перестройки при каждом запуске
+
+---
+
+## Долгосрочные планы / На рассмотрении
+
+### Платформа
+- 💡 **Веб-IDE / ноутбук** — Jupyter-подобный интерфейс для создания кастомных рабочих процессов пентеста
+- 💡 **Архитектура плагинов** — первоклассный SDK для сторонних интеграций помимо MCP
+- 💡 **Распределённое выполнение агентов** — запуск агентов на нескольких узлах для масштабных оценок
+- 💡 **API-gateway прокси** — прозрачный режим прокси для тестирования безопасности API
+- 💡 **Мобильное приложение** — нативное iOS/Android приложение-компаньон
 
 ### AI
-- 💡 **Reasoning traces / chain-of-thought display** — show the AI's reasoning steps in the UI for transparency
-- 💡 **Human-in-the-loop mode** — require explicit approval before executing high-risk tools
-- 💡 **Adaptive learning** — capture operator feedback on agent decisions to improve future recommendations
-- 💡 **Vulnerability correlation engine** — automatically correlate findings across multiple engagements to identify patterns
+- 💡 **Трассировка рассуждений / отображение цепочки мыслей** — показ шагов рассуждения AI в интерфейсе для прозрачности
+- 💡 **Режим «человек в петле»** — требование явного подтверждения перед выполнением высокорисковых инструментов
+- 💡 **Адаптивное обучение** — захват обратной связи оператора по решениям агента для улучшения будущих рекомендаций
+- 💡 **Движок корреляции уязвимостей** — автоматическая корреляция находок из нескольких заданий для выявления паттернов
 
-### Community
-- 💡 **Role / skill / tool sharing hub** — centralized repository for community-contributed roles, skills, and tools
-- 💡 **CTF challenge integration** — direct integration with CTF platforms (HackTheBox, TryHackMe, PicoCTF) for practice mode
-- 💡 **Certification exam assistance mode** — guided study mode for OSCP, CEH, and similar certifications
-
----
-
-## Contributing
-
-We welcome contributions in all areas. To propose a roadmap item or discuss implementation details:
-
-1. **Open an issue** using the [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.md)
-2. **Join the discussion** on existing roadmap issues
-3. **Submit a PR** — all contributions are reviewed and credited
-
-See [README.md](README.md) for development setup instructions.
+### Сообщество
+- 💡 **Хаб обмена ролями / навыками / инструментами** — централизованный репозиторий ролей, навыков и инструментов от сообщества
+- 💡 **Интеграция CTF-платформ** — прямая интеграция с CTF-платформами (HackTheBox, TryHackMe, PicoCTF) для режима практики
+- 💡 **Режим подготовки к сертификации** — руководимый режим обучения для OSCP, CEH и аналогичных сертификаций
 
 ---
 
-*Last updated: 2026-03-06 — Docker lifecycle management shipped; agent introspection (memory similarity + KB preflight) shipped; tool-result memory auto-persistence shipped; Memory UI paginated loading and filters shipped. This roadmap is subject to change. Follow the repository to stay updated.*
+## Участие в проекте
+
+Мы приветствуем вклад во всех областях. Чтобы предложить элемент дорожной карты или обсудить детали реализации:
+
+1. **Откройте issue** по шаблону [Feature Request](.github/ISSUE_TEMPLATE/feature_request.md)
+2. **Присоединитесь к обсуждению** существующих roadmap-issues
+3. **Отправьте PR** — все вклады проверяются и указываются в авторах
+
+Инструкции по настройке разработки — в [README.md](README.md).
 
 ---
 
-## Telegram Bot — Detailed Roadmap
+*Последнее обновление: 2026-03-06 — выпущено управление жизненным циклом Docker; выпущена интроспекция агента (similarity по памяти + preflight базы знаний); выпущена автоматическая персистентность памяти результатов инструментов; выпущена пагинация Memory UI и фильтры. Дорожная карта может меняться. Следите за репозиторием для получения обновлений.*
 
-The Telegram integration (shipped in v1.3.17) provides a foundation for deeper mobile-first control. The following items extend it further:
+---
 
-| Item | Status | Description |
-|------|--------|-------------|
-| Long-polling bot with multi-user support | ✅ | Independent sessions per Telegram user ID |
-| Live progress streaming | ✅ | Placeholder message edited with tool-call steps during execution |
-| Role switching via bot commands | ✅ | `role <name>` command supported in Telegram |
-| MCP tool configuration via Web UI | ✅ | Tools added/toggled in settings are immediately available to the bot |
-| User whitelist (allowed_user_ids) | ✅ | Restrict bot access to specific Telegram user IDs |
-| Group chat support (@ mentions) | ✅ | Bot responds to @mention in groups |
-| Inline keyboard for confirmations | 📋 | Buttons for dangerous actions (delete, stop) |
-| File upload for large results | 📋 | Send results >4096 chars as a `.txt` file |
-| Telegram webhook mode (optional) | 📋 | Alternative to polling for low-latency deployments with public IP |
-| `/start` onboarding message | 📋 | Automatic welcome message with quick-start tips on first contact |
+## Telegram-бот — детальная дорожная карта
+
+Интеграция с Telegram (выпущена в v1.3.17) создаёт основу для более глубокого управления с мобильных устройств. Следующие элементы расширяют её:
+
+| Элемент | Статус | Описание |
+|---------|--------|----------|
+| Long-polling бот с мультипользовательской поддержкой | ✅ | Независимые сессии для каждого Telegram user ID |
+| Стриминг прогресса в реальном времени | ✅ | Placeholder-сообщение редактируется с шагами вызова инструментов во время выполнения |
+| Смена роли через команды бота | ✅ | Команда `role <name>` поддерживается в Telegram |
+| Настройка MCP-инструментов через Web UI | ✅ | Инструменты, добавленные/переключённые в настройках, немедленно доступны боту |
+| Белый список пользователей (allowed_user_ids) | ✅ | Ограничение доступа к боту конкретными Telegram user ID |
+| Поддержка групповых чатов (@ упоминания) | ✅ | Бот отвечает на @mention в группах |
+| Inline-клавиатура для подтверждений | 📋 | Кнопки для опасных действий (удалить, остановить) |
+| Загрузка файлов для больших результатов | 📋 | Отправка результатов >4096 символов как `.txt` файл |
+| Webhook-режим Telegram (опционально) | 📋 | Альтернатива polling для low-latency развёртывания с публичным IP |
+| Приветственное сообщение `/start` | 📋 | Автоматическое приветствие с быстрыми советами при первом контакте |
