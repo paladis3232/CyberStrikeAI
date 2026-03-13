@@ -1,6 +1,6 @@
 ﻿// 前端国际化初始化（基于 i18next 浏览器版本）
 (function () {
-    const DEFAULT_LANG = 'zh-CN';
+    const DEFAULT_LANG = 'en-US';
     const STORAGE_KEY = 'csai_lang';
     const RESOURCES_PREFIX = '/static/i18n';
 
@@ -19,7 +19,7 @@
                 return stored;
             }
         } catch (e) {
-            console.warn('无法读取语言设置:', e);
+            console.warn('Cannot read language settings:', e);
         }
 
         const navLang = (navigator.language || navigator.userLanguage || '').toLowerCase();
@@ -41,7 +41,7 @@
                 cache: 'no-cache'
             });
             if (!resp.ok) {
-                console.warn('加载语言包失败:', lang, resp.status);
+                console.warn('Failed to load language pack:', lang, resp.status);
                 return;
             }
             const data = await resp.json();
@@ -50,7 +50,7 @@
             }
             loadedLangs[lang] = true;
         } catch (e) {
-            console.error('加载语言包异常:', lang, e);
+            console.error('Language pack error:', lang, e);
         }
     }
 
@@ -150,7 +150,7 @@
         try {
             localStorage.setItem(STORAGE_KEY, lang);
         } catch (e) {
-            console.warn('无法保存语言设置:', e);
+            console.warn('Cannot save language settings:', e);
         }
         applyTranslations(document);
         updateLangLabel();
@@ -164,7 +164,7 @@
 
     async function initI18n() {
         if (typeof i18next === 'undefined') {
-            console.warn('i18next 未加载，跳过前端国际化初始化');
+            console.warn('i18next not loaded, skipping frontend i18n init');
             if (typeof i18nReadyResolve === 'function') i18nReadyResolve();
             return;
         }
