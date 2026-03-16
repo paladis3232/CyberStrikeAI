@@ -134,6 +134,110 @@
     color: #e2e8f0;
 }
 
+/* Page headers */
+[data-theme="dark"] .page-header {
+    background: linear-gradient(135deg, #1e293b 0%, #172033 100%);
+    border-bottom-color: #334155;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .page-header h2 {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .dashboard-page .page-header {
+    background: linear-gradient(135deg, #1e293b 0%, #172033 100%);
+    border-bottom-color: #334155;
+    box-shadow: none;
+}
+
+/* ===== Conversation sidebar (right panel with New Conversation, search, groups) ===== */
+[data-theme="dark"] .conversation-sidebar {
+    background: linear-gradient(180deg, #1e293b 0%, #172033 100%);
+    border-right-color: #334155;
+}
+
+/* ===== Chat container (main wrapper of chat area) ===== */
+[data-theme="dark"] .chat-container {
+    background: #0f172a;
+}
+
+/* ===== Chat messages area ===== */
+[data-theme="dark"] .chat-messages {
+    background: #0f172a;
+}
+
+/* ===== Dashboard sections (Operations Overview, Vulnerability Distribution, etc.) ===== */
+[data-theme="dark"] .dashboard-grid .dashboard-section {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* ===== Operations Overview inner item cards ===== */
+[data-theme="dark"] .dashboard-overview-item {
+    background: linear-gradient(135deg, #243248 0%, #1e2d42 100%);
+    border-color: #334155;
+}
+
+[data-theme="dark"] .dashboard-overview-item:hover {
+    background: linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(59,130,246,0.08) 100%);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* ===== Vulnerability severity stacked bar ===== */
+[data-theme="dark"] .dashboard-stacked-bar {
+    background: #243248;
+}
+
+[data-theme="dark"] .dashboard-bar-seg {
+    border-right-color: rgba(15, 23, 42, 0.4);
+}
+
+/* ===== Tool Execution Count placeholder & bar track ===== */
+[data-theme="dark"] .dashboard-tools-chart-placeholder {
+    background: linear-gradient(135deg, #1e293b 0%, #172033 100%);
+    border-color: #334155;
+    color: #64748b;
+}
+
+[data-theme="dark"] .dashboard-tools-bar-track {
+    background: #243248;
+}
+
+/* ===== Dashboard Quick Links icon ===== */
+[data-theme="dark"] .dashboard-quick-icon {
+    background: #243248;
+    color: #94a3b8;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== Information Gathering (Recon) form cards ===== */
+[data-theme="dark"] .info-collect-form > .form-group,
+[data-theme="dark"] .info-collect-form > .info-collect-form-row {
+    background: linear-gradient(135deg, #1e293b 0%, #172033 100%);
+    border-color: #334155;
+}
+
+/* ===== Nav submenu background (removes white rgba overlay) ===== */
+[data-theme="dark"] .nav-submenu {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+/* ===== Nav submenu item text — better contrast ===== */
+[data-theme="dark"] .nav-submenu-item {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .nav-submenu-item:hover {
+    background: rgba(59, 130, 246, 0.1);
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .nav-submenu-item.active {
+    color: #60a5fa;
+}
+
 /* Scrollbar for dark mode */
 [data-theme="dark"] ::-webkit-scrollbar-track {
     background: #1e293b;
@@ -145,6 +249,127 @@
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
     background: #64748b;
+}
+
+/* Chat input buttons and textarea */
+[data-theme="dark"] .chat-upload-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .chat-upload-btn:hover {
+    background: #243248;
+}
+
+[data-theme="dark"] .chat-input-container textarea {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .chat-input-container textarea:focus {
+    background: #243248;
+    border-color: #3b82f6;
+}
+
+/* Mention suggestions dropdown */
+[data-theme="dark"] .mention-suggestions {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .mention-item {
+    background: #243248 !important;
+    border-color: #334155;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .mention-item:hover {
+    background: #2d3f58 !important;
+    border-left-color: #3b82f6;
+}
+
+/* Role selector button and panel */
+[data-theme="dark"] .role-selector-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .role-selector-btn:hover {
+    background: #243248;
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+[data-theme="dark"] .role-selection-panel {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .role-selection-panel-header {
+    background: #1e293b;
+    border-bottom-color: #334155;
+}
+
+[data-theme="dark"] .role-selection-panel-title {
+    color: #e2e8f0;
+}
+
+/* Dashboard KPI cards */
+[data-theme="dark"] .dashboard-kpi-card {
+    background: #1e293b !important;
+    border-color: #334155;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .dashboard-kpi-card:nth-child(1),
+[data-theme="dark"] .dashboard-kpi-card:nth-child(2),
+[data-theme="dark"] .dashboard-kpi-card:nth-child(3) {
+    background: linear-gradient(145deg, #1e293b 0%, #243248 100%) !important;
+}
+
+/* Attack chain container */
+[data-theme="dark"] .attack-chain-container {
+    background: #1e293b;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Create group modal overrides */
+[data-theme="dark"] .create-group-modal-content .modal-header {
+    background: linear-gradient(135deg, #1e293b 0%, #243248 100%);
+    border-bottom-color: #334155;
+}
+
+[data-theme="dark"] .create-group-modal-content .modal-header h2 {
+    color: #e2e8f0;
+    -webkit-text-fill-color: #e2e8f0;
+}
+
+[data-theme="dark"] .create-group-modal-content .modal-footer {
+    background: #172033;
+    border-top-color: #334155;
+}
+
+/* Role selection panel items */
+[data-theme="dark"] .role-selection-item-main {
+    background: #243248;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .role-selection-item-main:hover {
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.15) 0%, rgba(138, 43, 226, 0.08) 100%);
+    border-color: rgba(138, 43, 226, 0.35);
+}
+
+[data-theme="dark"] .role-selection-item-name-main {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .role-selection-item-description-main {
+    color: #94a3b8;
 }
 
 /* Theme toggle button */
@@ -3834,12 +4059,12 @@ header {
 }
 
 .tools-list {
-    max-height: 400px;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     border: 1px solid var(--border-color);
     border-radius: 6px;
     background: var(--bg-primary);
-    padding: 8px;
+    overflow: hidden;
 }
 
 .tool-item {
@@ -3905,8 +4130,10 @@ header {
 }
 
 .tools-list-items {
-    max-height: 400px;
+    max-height: calc(100vh - 340px);
+    min-height: 200px;
     overflow-y: auto;
+    padding: 8px;
 }
 
 .tools-pagination,
@@ -3917,10 +4144,11 @@ header {
     align-items: center;
     padding: 12px 16px;
     border-top: 1px solid var(--border-color);
-    margin-top: 8px;
-    background: var(--bg-primary);
+    margin-top: 0;
+    background: var(--bg-secondary);
     gap: 16px;
     flex-wrap: wrap;
+    flex-shrink: 0;
 }
 
 .pagination-container {
@@ -8606,7 +8834,7 @@ header {
 /* First row: core KPIs (visual hierarchy + color block emphasis) */
 .dashboard-kpi-row {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
     margin-bottom: 24px;
 }
@@ -8633,7 +8861,6 @@ header {
 .dashboard-kpi-card:nth-child(1) { background: linear-gradient(145deg, #fff 0%, #f0f9ff 100%); }
 .dashboard-kpi-card:nth-child(2) { background: linear-gradient(145deg, #fff 0%, #fef2f2 100%); }
 .dashboard-kpi-card:nth-child(3) { background: linear-gradient(145deg, #fff 0%, #f0fdf4 100%); }
-.dashboard-kpi-card:nth-child(4) { background: linear-gradient(145deg, #fff 0%, #f0fdfa 100%); }
 
 .dashboard-kpi-card:hover {
     transform: translateY(-3px);
