@@ -67,7 +67,7 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 - 📋 **Tool chaining macros** — define multi-step pipelines (e.g., subfinder → httpx → nuclei) as a single named operation
 
 ### UI / UX
-- 🚧 **Fully translated English UI** — active localization work; `i18n.js` module shipped, English and Chinese translations added, `index.html` fallback texts migrated to English; remaining pages being finalized
+- ✅ **Fully translated English UI** — `i18n.js` module shipped with English and Chinese translations; all hardcoded Chinese strings in `chat.js`, `monitor.js`, and `vulnerability.js` replaced with English equivalents; full-width punctuation (`：`, `！`) normalized to ASCII
 - ✅ **Dark / light theme toggle** — user-configurable dark/light color scheme; toggle button in the header; preference persisted in localStorage
 - 📋 **Improved attack-chain export** — export as PDF, PNG, or JSON for reporting
 - 📋 **Vulnerability report generator** — one-click HTML/Markdown pentest report from discovered vulnerabilities
@@ -145,7 +145,7 @@ See [README.md](README.md) for development setup instructions.
 
 ---
 
-*Last updated: 2026-03-18 — v1.5.1: Dark/light theme stabilized across all pages; `i18n.js` internationalization module added with English and Chinese translations; `index.html` and tool YAML files translated to English; dark theme CSS variables unified. Previous v1.5.0: WebShell Management module added (xterm.js terminal, remote file manager, AI assistant with streaming agent loop, PHP/ASP/ASPX/JSP support); config.yaml extended with `agent.tool_timeout_minutes`, `mcp.auth_header`/`mcp.auth_header_value`, and knowledge base rate-limiting fields. This roadmap is subject to change. Follow the repository to stay updated.*
+*Last updated: 2026-03-18 — v1.5.2: Full English UI translation complete; all remaining hardcoded Chinese strings in `chat.js`, `monitor.js`, and `vulnerability.js` replaced with English; full-width punctuation normalized to ASCII. Previous v1.5.1: Dark/light theme stabilized across all pages; `i18n.js` internationalization module added with English and Chinese translations; `index.html` and tool YAML files translated to English; dark theme CSS variables unified. Previous v1.5.0: WebShell Management module added (xterm.js terminal, remote file manager, AI assistant with streaming agent loop, PHP/ASP/ASPX/JSP support); config.yaml extended with `agent.tool_timeout_minutes`, `mcp.auth_header`/`mcp.auth_header_value`, and knowledge base rate-limiting fields. This roadmap is subject to change. Follow the repository to stay updated.*
 
 ---
 
