@@ -145,7 +145,7 @@ See [README.md](README.md) for development setup instructions.
 
 ---
 
-*Last updated: 2026-03-18 — v1.5.2: Full English UI translation complete; all remaining hardcoded Chinese strings in `chat.js`, `monitor.js`, and `vulnerability.js` replaced with English; full-width punctuation normalized to ASCII. Previous v1.5.1: Dark/light theme stabilized across all pages; `i18n.js` internationalization module added with English and Chinese translations; `index.html` and tool YAML files translated to English; dark theme CSS variables unified. Previous v1.5.0: WebShell Management module added (xterm.js terminal, remote file manager, AI assistant with streaming agent loop, PHP/ASP/ASPX/JSP support); config.yaml extended with `agent.tool_timeout_minutes`, `mcp.auth_header`/`mcp.auth_header_value`, and knowledge base rate-limiting fields. This roadmap is subject to change. Follow the repository to stay updated.*
+*Last updated: 2026-03-18 — v1.5.3: Telegram inline keyboard confirmations shipped — `stop` and `delete` commands now show ✅/❌ inline buttons; 60-second TTL with per-user authorization; `callback_query` handling added to polling loop; `sendMessageWithKeyboard`, `editMessageRemoveKeyboard`, `answerCallbackQuery` API methods added. Previous v1.5.2: Full English UI translation complete; all remaining hardcoded Chinese strings in `chat.js`, `monitor.js`, and `vulnerability.js` replaced with English; full-width punctuation normalized to ASCII. Previous v1.5.1: Dark/light theme stabilized across all pages; `i18n.js` internationalization module added with English and Chinese translations; `index.html` and tool YAML files translated to English; dark theme CSS variables unified. Previous v1.5.0: WebShell Management module added (xterm.js terminal, remote file manager, AI assistant with streaming agent loop, PHP/ASP/ASPX/JSP support); config.yaml extended with `agent.tool_timeout_minutes`, `mcp.auth_header`/`mcp.auth_header_value`, and knowledge base rate-limiting fields. This roadmap is subject to change. Follow the repository to stay updated.*
 
 ---
 
@@ -161,7 +161,7 @@ The Telegram integration (shipped in v1.3.17) provides a foundation for deeper m
 | MCP tool configuration via Web UI | ✅ | Tools added/toggled in settings are immediately available to the bot |
 | User whitelist (allowed_user_ids) | ✅ | Restrict bot access to specific Telegram user IDs |
 | Group chat support (@ mentions) | ✅ | Bot responds to @mention in groups |
-| Inline keyboard for confirmations | 📋 | Buttons for dangerous actions (delete, stop) |
+| Inline keyboard for confirmations | ✅ | ✅ / ❌ buttons for dangerous actions (`delete`, `stop`); 60-second TTL; per-user authorization check; confirmation dialog replaced with result on resolve |
 | File upload for large results | 📋 | Send results >4096 chars as a `.txt` file |
 | Telegram webhook mode (optional) | 📋 | Alternative to polling for low-latency deployments with public IP |
 | `/start` onboarding message | 📋 | Automatic welcome message with quick-start tips on first contact |

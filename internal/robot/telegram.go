@@ -3,6 +3,8 @@ package robot
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,6 +25,7 @@ const (
 	telegramMaxMessageLen    = 4096             // Telegram message character limit
 	telegramEditThrottle     = 3 * time.Second  // minimum interval between message edits
 	telegramAPIBase          = "https://api.telegram.org"
+	telegramConfirmTTL       = 60 * time.Second // confirmation dialog expires after 60 s
 )
 
 // ——— Telegram API types ———
@@ -34,8 +37,9 @@ type tgResponse struct {
 }
 
 type tgUpdate struct {
-	UpdateID int64      `json:"update_id"`
-	Message  *tgMessage `json:"message"`
+	UpdateID      int64            `json:"update_id"`
+	Message       *tgMessage       `json:"message"`
+	CallbackQuery *tgCallbackQuery `json:"callback_query"`
 }
 
 type tgMessage struct {
@@ -65,18 +69,48 @@ type tgEntity struct {
 }
 
 type tgSentMessage struct {
-	MessageID int64 `json:"message_id"`
+	MessageID int64  `json:"message_id"`
 	Chat      tgChat `json:"chat"`
+}
+
+// tgInlineKeyboardButton is a single button in an inline keyboard row.
+type tgInlineKeyboardButton struct {
+	Text         string `json:"text"`
+	CallbackData string `json:"callback_data"`
+}
+
+// tgInlineKeyboardMarkup is the reply_markup payload for inline keyboard buttons.
+type tgInlineKeyboardMarkup struct {
+	InlineKeyboard [][]tgInlineKeyboardButton `json:"inline_keyboard"`
+}
+
+// tgCallbackQuery is fired when the user clicks an inline keyboard button.
+type tgCallbackQuery struct {
+	ID      string     `json:"id"`
+	From    *tgUser    `json:"from"`
+	Message *tgMessage `json:"message"`
+	Data    string     `json:"data"`
+}
+
+// pendingConfirmation holds a queued destructive action waiting for the user to confirm.
+type pendingConfirmation struct {
+	userID    string
+	chatID    int64
+	messageID int64
+	command   string    // original command to execute on ✅ confirm
+	expiresAt time.Time
 }
 
 // tgBot holds Telegram Bot API state for one polling session.
 type tgBot struct {
-	apiURL      string
-	cfg         config.RobotTelegramConfig
-	h           MessageHandler
-	logger      *zap.Logger
-	botUsername string // fetched via getMe
-	allowedSet  map[int64]bool
+	apiURL         string
+	cfg            config.RobotTelegramConfig
+	h              MessageHandler
+	logger         *zap.Logger
+	botUsername    string
+	allowedSet     map[int64]bool
+	pendingMu      sync.Mutex
+	pendingConfirm map[string]*pendingConfirmation // token → pending action
 }
 
 // ——— Public entrypoint ———
@@ -95,7 +129,6 @@ func StartTelegram(ctx context.Context, cfg config.RobotTelegramConfig, h Messag
 func runTelegramLoop(ctx context.Context, cfg config.RobotTelegramConfig, h MessageHandler, logger *zap.Logger) {
 	backoff := telegramReconnectInitial
 
-	// Build allowed-user set once
 	allowedSet := make(map[int64]bool, len(cfg.AllowedUserIDs))
 	for _, id := range cfg.AllowedUserIDs {
 		allowedSet[id] = true
@@ -103,11 +136,12 @@ func runTelegramLoop(ctx context.Context, cfg config.RobotTelegramConfig, h Mess
 
 	for {
 		bot := &tgBot{
-			apiURL:     fmt.Sprintf("%s/bot%s", telegramAPIBase, cfg.BotToken),
-			cfg:        cfg,
-			h:          h,
-			logger:     logger,
-			allowedSet: allowedSet,
+			apiURL:         fmt.Sprintf("%s/bot%s", telegramAPIBase, cfg.BotToken),
+			cfg:            cfg,
+			h:              h,
+			logger:         logger,
+			allowedSet:     allowedSet,
+			pendingConfirm: make(map[string]*pendingConfirmation),
 		}
 
 		logger.Info("Telegram bot connecting...")
@@ -138,7 +172,6 @@ func runTelegramLoop(ctx context.Context, cfg config.RobotTelegramConfig, h Mess
 // ——— Polling loop ———
 
 func (b *tgBot) runPollLoop(ctx context.Context) error {
-	// Fetch bot info (username) for group mention detection
 	if err := b.fetchBotInfo(ctx); err != nil {
 		return fmt.Errorf("getMe failed: %w", err)
 	}
@@ -164,6 +197,9 @@ func (b *tgBot) runPollLoop(ctx context.Context) error {
 			if u.Message != nil {
 				go b.handleUpdate(ctx, u.Message)
 			}
+			if u.CallbackQuery != nil {
+				go b.handleCallbackQuery(ctx, u.CallbackQuery)
+			}
 		}
 	}
 }
@@ -183,7 +219,7 @@ func (b *tgBot) getUpdates(ctx context.Context, offset int64) ([]tgUpdate, error
 	params := map[string]interface{}{
 		"offset":          offset,
 		"timeout":         telegramLongPollTimeout,
-		"allowed_updates": []string{"message"},
+		"allowed_updates": []string{"message", "callback_query"},
 	}
 	var updates []tgUpdate
 	if err := b.apiPost(ctx, "getUpdates", params, &updates); err != nil {
@@ -206,7 +242,6 @@ func (b *tgBot) sendMessage(ctx context.Context, chatID int64, text string) (*tg
 		}
 		var msg tgSentMessage
 		if err := b.apiPost(ctx, "sendMessage", params, &msg); err != nil {
-			// Fall back to plain text if Markdown parse fails
 			params["parse_mode"] = ""
 			if err2 := b.apiPost(ctx, "sendMessage", params, &msg); err2 != nil {
 				b.logger.Warn("Telegram sendMessage failed", zap.Error(err2), zap.Int("part", i))
@@ -218,6 +253,24 @@ func (b *tgBot) sendMessage(ctx context.Context, chatID int64, text string) (*tg
 		}
 	}
 	return sent, nil
+}
+
+// sendMessageWithKeyboard sends a message with an inline keyboard attached.
+func (b *tgBot) sendMessageWithKeyboard(ctx context.Context, chatID int64, text string, keyboard tgInlineKeyboardMarkup) (*tgSentMessage, error) {
+	params := map[string]interface{}{
+		"chat_id":      chatID,
+		"text":         text,
+		"parse_mode":   "Markdown",
+		"reply_markup": keyboard,
+	}
+	var msg tgSentMessage
+	if err := b.apiPost(ctx, "sendMessage", params, &msg); err != nil {
+		params["parse_mode"] = ""
+		if err2 := b.apiPost(ctx, "sendMessage", params, &msg); err2 != nil {
+			return nil, err2
+		}
+	}
+	return &msg, nil
 }
 
 func (b *tgBot) editMessageText(ctx context.Context, chatID, messageID int64, text string) error {
@@ -235,11 +288,42 @@ func (b *tgBot) editMessageText(ctx context.Context, chatID, messageID int64, te
 	}
 	var result json.RawMessage
 	if err := b.apiPost(ctx, "editMessageText", params, &result); err != nil {
-		// Retry without Markdown if parse error
 		params["parse_mode"] = ""
 		return b.apiPost(ctx, "editMessageText", params, &result)
 	}
 	return nil
+}
+
+// editMessageRemoveKeyboard replaces the message text and removes the inline keyboard.
+func (b *tgBot) editMessageRemoveKeyboard(ctx context.Context, chatID, messageID int64, text string) error {
+	if len(text) > telegramMaxMessageLen {
+		text = text[:telegramMaxMessageLen-3] + "..."
+	}
+	params := map[string]interface{}{
+		"chat_id":      chatID,
+		"message_id":   messageID,
+		"text":         text,
+		"parse_mode":   "Markdown",
+		"reply_markup": map[string]interface{}{"inline_keyboard": []interface{}{}},
+	}
+	var result json.RawMessage
+	if err := b.apiPost(ctx, "editMessageText", params, &result); err != nil {
+		params["parse_mode"] = ""
+		return b.apiPost(ctx, "editMessageText", params, &result)
+	}
+	return nil
+}
+
+// answerCallbackQuery acknowledges a button press (clears the Telegram loading indicator).
+func (b *tgBot) answerCallbackQuery(ctx context.Context, callbackID, text string) {
+	params := map[string]interface{}{
+		"callback_query_id": callbackID,
+	}
+	if text != "" {
+		params["text"] = text
+	}
+	var result json.RawMessage
+	_ = b.apiPost(ctx, "answerCallbackQuery", params, &result)
 }
 
 func (b *tgBot) sendChatAction(ctx context.Context, chatID int64, action string) {
@@ -249,6 +333,140 @@ func (b *tgBot) sendChatAction(ctx context.Context, chatID int64, action string)
 	}
 	var result json.RawMessage
 	_ = b.apiPost(ctx, "sendChatAction", params, &result)
+}
+
+// ——— Confirmation handling ———
+
+// requestConfirmation sends a ⚠️ message with ✅ / ❌ inline buttons for a dangerous command.
+func (b *tgBot) requestConfirmation(ctx context.Context, msg *tgMessage, command string) {
+	token := generateToken()
+	userID := fmt.Sprintf("%d", msg.From.ID)
+
+	// Sanitize command for display inside a backtick code span
+	cmdDisplay := strings.ReplaceAll(command, "`", "'")
+	confirmText := fmt.Sprintf(
+		"⚠️ *Confirm action*\n\n`%s`\n\nThis action cannot be undone. Proceed?",
+		cmdDisplay,
+	)
+
+	keyboard := tgInlineKeyboardMarkup{
+		InlineKeyboard: [][]tgInlineKeyboardButton{
+			{
+				{Text: "✅ Yes, proceed", CallbackData: "yes:" + token},
+				{Text: "❌ Cancel", CallbackData: "no:" + token},
+			},
+		},
+	}
+
+	sentMsg, err := b.sendMessageWithKeyboard(ctx, msg.Chat.ID, confirmText, keyboard)
+	if err != nil {
+		b.logger.Warn("Telegram failed to send confirmation keyboard", zap.Error(err))
+		_, _ = b.sendMessage(ctx, msg.Chat.ID, "❌ Failed to send confirmation dialog. Please try again.")
+		return
+	}
+
+	now := time.Now()
+	b.pendingMu.Lock()
+	// Purge expired entries while holding the lock
+	for k, v := range b.pendingConfirm {
+		if now.After(v.expiresAt) {
+			delete(b.pendingConfirm, k)
+		}
+	}
+	b.pendingConfirm[token] = &pendingConfirmation{
+		userID:    userID,
+		chatID:    msg.Chat.ID,
+		messageID: sentMsg.MessageID,
+		command:   command,
+		expiresAt: now.Add(telegramConfirmTTL),
+	}
+	b.pendingMu.Unlock()
+
+	b.logger.Info("Telegram confirmation requested",
+		zap.String("user_id", userID),
+		zap.String("command", command),
+		zap.String("token", token),
+	)
+}
+
+// handleCallbackQuery processes an inline keyboard button press.
+func (b *tgBot) handleCallbackQuery(ctx context.Context, cb *tgCallbackQuery) {
+	if cb.From == nil || cb.From.IsBot {
+		b.answerCallbackQuery(ctx, cb.ID, "")
+		return
+	}
+
+	// Authorization check
+	if len(b.allowedSet) > 0 && !b.allowedSet[cb.From.ID] {
+		b.answerCallbackQuery(ctx, cb.ID, "⛔ Not authorized")
+		return
+	}
+
+	// Parse callback data: "yes:<token>" or "no:<token>"
+	var isConfirm bool
+	var token string
+	switch {
+	case strings.HasPrefix(cb.Data, "yes:"):
+		isConfirm = true
+		token = strings.TrimPrefix(cb.Data, "yes:")
+	case strings.HasPrefix(cb.Data, "no:"):
+		isConfirm = false
+		token = strings.TrimPrefix(cb.Data, "no:")
+	default:
+		b.answerCallbackQuery(ctx, cb.ID, "Unknown action")
+		return
+	}
+
+	// Look up and remove the pending confirmation atomically
+	b.pendingMu.Lock()
+	pending, ok := b.pendingConfirm[token]
+	if ok {
+		delete(b.pendingConfirm, token)
+	}
+	b.pendingMu.Unlock()
+
+	if !ok || time.Now().After(pending.expiresAt) {
+		b.answerCallbackQuery(ctx, cb.ID, "⏱ Confirmation expired")
+		if cb.Message != nil {
+			_ = b.editMessageRemoveKeyboard(ctx, cb.Message.Chat.ID, cb.Message.MessageID,
+				"⏱ *Confirmation expired*\n\nPlease resend the command.")
+		}
+		return
+	}
+
+	// Only the user who issued the command can confirm it
+	if fmt.Sprintf("%d", cb.From.ID) != pending.userID {
+		b.answerCallbackQuery(ctx, cb.ID, "⛔ Only the original requester can confirm this action")
+		return
+	}
+
+	chatID := pending.chatID
+	msgID := pending.messageID
+
+	if !isConfirm {
+		b.answerCallbackQuery(ctx, cb.ID, "❌ Cancelled")
+		_ = b.editMessageRemoveKeyboard(ctx, chatID, msgID, "❌ *Action cancelled*")
+		b.logger.Info("Telegram action cancelled", zap.String("command", pending.command))
+		return
+	}
+
+	// Confirmed — acknowledge, update the dialog, then execute
+	b.answerCallbackQuery(ctx, cb.ID, "✅ Executing...")
+	cmdDisplay := strings.ReplaceAll(pending.command, "`", "'")
+	_ = b.editMessageRemoveKeyboard(ctx, chatID, msgID,
+		fmt.Sprintf("✅ *Executing:* `%s`\n\n⏳ Please wait...", cmdDisplay))
+
+	b.logger.Info("Telegram confirmed action executing",
+		zap.String("user_id", pending.userID),
+		zap.String("command", pending.command),
+	)
+
+	reply := b.h.HandleMessage("telegram", pending.userID, pending.command)
+
+	resultText := fmt.Sprintf("✅ *Done:* `%s`\n\n%s", cmdDisplay, reply)
+	if err := b.editMessageRemoveKeyboard(ctx, chatID, msgID, resultText); err != nil {
+		_, _ = b.sendMessage(ctx, chatID, reply)
+	}
 }
 
 // ——— Message handling ———
@@ -285,6 +503,12 @@ func (b *tgBot) handleUpdate(ctx context.Context, msg *tgMessage) {
 		zap.String("chat_type", msg.Chat.Type),
 		zap.String("content_preview", safeTruncate(text, 80)))
 
+	// Dangerous commands require inline keyboard confirmation before executing
+	if isDangerousCommand(text) {
+		b.requestConfirmation(ctx, msg, text)
+		return
+	}
+
 	userID := fmt.Sprintf("%d", msg.From.ID)
 
 	// Check if it's a quick command (respond inline without placeholder)
@@ -310,7 +534,6 @@ func (b *tgBot) handleUpdate(ctx context.Context, msg *tgMessage) {
 	placeholderMsg, err := b.sendMessage(ctx, msg.Chat.ID, "⏳ Processing your request...")
 	if err != nil || placeholderMsg == nil {
 		b.logger.Warn("Telegram failed to send placeholder message", zap.Error(err))
-		// Fall back: just process and send a new message
 		reply := b.h.HandleMessage("telegram", userID, text)
 		_, _ = b.sendMessage(ctx, msg.Chat.ID, reply)
 		return
@@ -335,7 +558,6 @@ func (b *tgBot) handleUpdate(ctx context.Context, msg *tgMessage) {
 		progressBuf.Reset()
 		progressBuf.WriteString(fmt.Sprintf("⚙️ *Working...* (step %d)\n\n`%s`", stepCount, sanitizeProgress(step)))
 
-		// Throttle edits: at most once every telegramEditThrottle
 		if time.Since(lastEdit) < telegramEditThrottle {
 			return
 		}
@@ -380,10 +602,8 @@ func (b *tgBot) handleUpdate(ctx context.Context, msg *tgMessage) {
 	defer cancel()
 
 	if err := b.editMessageText(editCtx, msg.Chat.ID, placeholderID, parts[0]); err != nil {
-		// Edit failed: send as new message
 		_, _ = b.sendMessage(ctx, msg.Chat.ID, parts[0])
 	}
-	// Send overflow parts as additional messages
 	for _, part := range parts[1:] {
 		_, _ = b.sendMessage(ctx, msg.Chat.ID, part)
 	}
@@ -440,6 +660,29 @@ func (b *tgBot) doRequest(ctx context.Context, httpMethod, url string, body io.R
 }
 
 // ——— Helpers ———
+
+// isDangerousCommand returns true for commands that require inline keyboard confirmation.
+func isDangerousCommand(text string) bool {
+	lower := strings.ToLower(strings.TrimSpace(text))
+	// "stop" aborts a running agent task
+	if lower == "stop" {
+		return true
+	}
+	// "delete <id>" permanently removes a conversation
+	if strings.HasPrefix(lower, "delete ") {
+		return true
+	}
+	return false
+}
+
+// generateToken creates a random 8-byte hex string used as a short-lived confirmation token.
+func generateToken() string {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
+}
 
 // isMentioned returns true if the bot (@username) is mentioned in a group message.
 func (b *tgBot) isMentioned(msg *tgMessage) bool {
@@ -505,7 +748,6 @@ func splitTelegramMessage(text string, limit int) []string {
 			break
 		}
 		chunk := runes[:limit]
-		// Try to break at a newline
 		cut := limit
 		for i := limit - 1; i > limit/2; i-- {
 			if chunk[i] == '\n' {
@@ -515,7 +757,6 @@ func splitTelegramMessage(text string, limit int) []string {
 		}
 		parts = append(parts, string(runes[:cut]))
 		runes = runes[cut:]
-		// Strip leading newlines from next chunk
 		for len(runes) > 0 && runes[0] == '\n' {
 			runes = runes[1:]
 		}
@@ -529,7 +770,6 @@ func sanitizeProgress(step string) string {
 	if len(step) > 200 {
 		step = step[:200] + "..."
 	}
-	// Escape backticks for inline code block
 	step = strings.ReplaceAll(step, "`", "'")
 	return step
 }
