@@ -83,10 +83,11 @@ CyberStrikeAI is an **AI-native security testing platform** built in Go. It inte
 - 🛡️ Vulnerability management with CRUD operations, severity tracking, status workflow, and statistics
 - 📋 Batch task management: create task queues, add multiple tasks, and execute them sequentially
 - 🎭 Role-based testing: 13 predefined security testing roles (Penetration Testing, CTF, Web App Scanning, etc.) with custom prompts and tool restrictions
-- 🎯 Skills system: 24 predefined security testing skills (SQL injection, XSS, API security, Android reverse engineering, etc.) that can be attached to roles or called on-demand by AI agents
+- 🎯 Skills system: 24 predefined security testing skills (SQL injection, XSS, CSRF, SSRF, XXE, Command Injection, File Upload, IDOR, Deserialization, API security, Android reverse engineering, container security, cloud security, network pentest, mobile app security, LDAP/XPath injection, incident response, secure code review, and more) that can be attached to roles or called on-demand by AI agents
 - 🐳 **Docker lifecycle management**: deploy, update, start, stop, restart, and monitor the Docker stack directly from the System Settings UI or via REST API
 - 📱 **Chatbot**: Telegram and Lark long-lived connections so you can talk to CyberStrikeAI from mobile (see [Robot / Chatbot guide](docs/robot_en.md) for setup and commands)
 - 🌙 **Dark / light theme toggle**: switch between dark and light UI themes from the header; preference is saved across sessions
+- 🐚 **WebShell Management**: built-in webshell manager — add PHP/ASP/ASPX/JSP connections, execute commands via xterm.js virtual terminal, browse and manage remote files, and get AI-assisted post-exploitation guidance in a dedicated tab
 
 ## Tool Overview
 
@@ -172,6 +173,7 @@ go build -o cyberstrike-ai cmd/server/main.go
 - **Conversation groups** – Organize conversations into groups, pin important groups, rename or delete groups via context menu.
 - **Vulnerability management** – Create, update, and track vulnerabilities discovered during testing. Filter by severity (critical/high/medium/low/info), status (open/confirmed/fixed/false_positive), and conversation. View statistics and export findings.
 - **Batch task management** – Create task queues with multiple tasks, add or edit tasks before execution, and run them sequentially. Each task executes as a separate conversation, with status tracking (pending/running/completed/failed/cancelled) and full execution history.
+- **WebShell Management** – Manage post-exploitation webshell connections (PHP/ASP/ASPX/JSP). Execute commands in an xterm.js virtual terminal, browse and manage remote files (list, upload, download, edit, delete), and use the AI Assistant tab for contextual post-exploitation guidance powered by the same agent loop as the main chat.
 - **Settings** – Tweak provider keys, MCP enablement, tool toggles, and agent iteration limits.
 
 ### Built-in Safeguards
@@ -209,7 +211,7 @@ go build -o cyberstrike-ai cmd/server/main.go
 2. Restart the server or reload configuration; the role appears in the role selector dropdown.
 
 ### Skills System
-- **Predefined skills** – System includes 24 predefined security testing skills (SQL injection, XSS, API security, cloud security, container security, mobile app security, Android reverse engineering, LDAP/XPath injection, etc.) in the `skills/` directory.
+- **Predefined skills** – System includes 24 predefined security testing skills in the `skills/` directory, covering: SQL injection, XSS, CSRF, SSRF, XXE, Command injection, File upload, IDOR, Deserialization, API security, Android reverse engineering, Container security, Cloud security audit, Network penetration testing, Mobile app security, LDAP/XPath injection, Incident response, Secure code review, Vulnerability assessment, Security automation, Security awareness training, Bitrix24 webhook exploitation, Business logic testing, and XPath injection.
 - **Skill hints in prompts** – When a role is selected, skill names attached to that role are added to the system prompt as recommendations. Skill content is not automatically injected; AI agents must use the `read_skill` tool to access skill details when needed.
 - **On-demand access** – AI agents can also access skills on-demand using built-in tools (`list_skills`, `read_skill`), allowing dynamic skill retrieval during task execution.
 - **Structured format** – Each skill is a directory containing a `SKILL.md` file with detailed testing methods, tool usage, best practices, and examples. Skills support YAML front matter for metadata.
@@ -517,6 +519,7 @@ The introspection context is injected into the system prompt as a `<memory_simil
 - **Role APIs** – manage security testing roles via `/api/roles` endpoints: `GET /api/roles` (list all roles), `GET /api/roles/:name` (get role), `POST /api/roles` (create role), `PUT /api/roles/:name` (update role), `DELETE /api/roles/:name` (delete role). Roles are stored as YAML files in the `roles/` directory and support hot-reload.
 - **Vulnerability APIs** – manage vulnerabilities via `/api/vulnerabilities` endpoints: `GET /api/vulnerabilities` (list with filters), `POST /api/vulnerabilities` (create), `GET /api/vulnerabilities/:id` (get), `PUT /api/vulnerabilities/:id` (update), `DELETE /api/vulnerabilities/:id` (delete), `GET /api/vulnerabilities/stats` (statistics).
 - **Batch Task APIs** – manage batch task queues via `/api/batch-tasks` endpoints: `POST /api/batch-tasks` (create queue), `GET /api/batch-tasks` (list queues), `GET /api/batch-tasks/:queueId` (get queue), `POST /api/batch-tasks/:queueId/start` (start execution), `POST /api/batch-tasks/:queueId/cancel` (cancel), `DELETE /api/batch-tasks/:queueId` (delete), `POST /api/batch-tasks/:queueId/tasks` (add task), `PUT /api/batch-tasks/:queueId/tasks/:taskId` (update task), `DELETE /api/batch-tasks/:queueId/tasks/:taskId` (delete task). Tasks execute sequentially, each creating a separate conversation with full status tracking.
+- **WebShell APIs** – manage webshell connections and execute commands via `/api/webshell` endpoints: `GET /api/webshell/connections` (list), `POST /api/webshell/connections` (create), `PUT /api/webshell/connections/:id` (update), `DELETE /api/webshell/connections/:id` (delete), `POST /api/webshell/exec` (execute command), `POST /api/webshell/file` (file operations), `GET /api/webshell/connections/:id/ai-history` (get AI conversation), `GET /api/webshell/connections/:id/ai-conversations` (list AI conversations).
 - **Docker APIs** – manage the Docker stack via `/api/docker/status`, `/api/docker/logs`, and `/api/docker/action` (see Docker Lifecycle Management section above).
 - **Task control** – pause/resume/stop long scans, re-run steps with new params, or stream transcripts.
 - **Audit & security** – rotate passwords via `/api/auth/change-password`, enforce short-lived sessions, and restrict MCP ports at the network layer when exposing the service.
@@ -555,6 +558,7 @@ agent:
   parallel_tool_execution: true
   max_parallel_tools: 0           # 0 = unlimited concurrent tools
   tool_retry_count: 0
+  tool_timeout_minutes: 10  # Per-tool execution timeout in minutes (0 = no limit)
   # ── Time Awareness ──────────────────────────────────────────────────────────
   time_awareness:
     enabled: true      # Prepend current date/time to every system prompt (recommended)
@@ -563,6 +567,12 @@ agent:
   memory:
     enabled: true      # Enable cross-session persistent memory store
     max_entries: 200   # Hard cap on memory entries (0 = unlimited)
+mcp:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8081
+  auth_header: ""        # Optional: header name for MCP auth (e.g. "Authorization")
+  auth_header_value: ""  # Optional: header value for MCP auth (e.g. "Bearer <token>")
 knowledge:
   enabled: false  # Enable knowledge base feature
   base_path: "knowledge_base"  # Path to knowledge base directory
@@ -571,6 +581,12 @@ knowledge:
     model: "text-embedding-v4"  # Embedding model name
     base_url: ""  # Leave empty to use OpenAI base_url
     api_key: ""  # Leave empty to use OpenAI api_key
+    chunk_size: 1024         # Characters per chunk when indexing documents
+    chunk_overlap: 128       # Overlap between consecutive chunks
+    max_rpm: 60              # Max embedding API requests per minute
+    rate_limit_delay_ms: 1000  # Delay between requests when rate limited (ms)
+    max_retries: 3           # Max retry attempts for failed embedding requests
+    retry_delay_ms: 2000     # Delay before retry (ms)
   retrieval:
     top_k: 5  # Number of top results to return
     similarity_threshold: 0.7  # Minimum similarity score (0-1)

@@ -31,7 +31,7 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 
 ### Security Testing Features
 - ✅ Role-based testing system (13 predefined roles: Penetration Testing, CTF, Web App Scanning, API Security, Binary Analysis, Cloud Security Audit, Digital Forensics, Container Security, Post-Exploitation, etc.)
-- ✅ Skills system (24 predefined skills: SQL injection, XSS, API security, container security, mobile app security, Android reverse engineering, LDAP/XPath injection, etc.)
+- ✅ Skills system (24 predefined skills: SQL injection, XSS, CSRF, SSRF, XXE, Command injection, File upload, IDOR, Deserialization, API security, Android reverse engineering, Container security, Cloud security audit, Network penetration, Mobile app security, LDAP/XPath injection, Incident response, Secure code review, Vulnerability assessment, Security automation, Security awareness training, Bitrix24 webhook exploitation, Business logic testing, and more)
 - ✅ Attack-chain graph with severity scoring and step-by-step replay
 - ✅ Vulnerability management — CRUD, severity/status tracking, statistics
 - ✅ Batch task management — create queues, add tasks, sequential execution with full status tracking
@@ -39,6 +39,7 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 - ✅ **Corpus-level BM25 Okapi** — real inverse document frequency scoring built from all indexed chunks; replaces the previous per-document approximation
 - ✅ Auto-indexing of Markdown knowledge files with incremental updates
 - ✅ FOFA / ZoomEye search engine integration
+- ✅ **WebShell Management** — built-in webshell connection manager (PHP/ASP/ASPX/JSP); xterm.js virtual terminal for command execution; remote file manager (list, upload, download, read, edit, delete); AI Assistant tab with streaming agent loop and per-connection conversation history; REST API (`/api/webshell/connections`, `/api/webshell/exec`, `/api/webshell/file`)
 
 ### Agent Intelligence
 - ✅ **Persistent memory** — cross-session key-value store (SQLite-backed) with 8 categories (credential, target, vulnerability, fact, note, tool_run, discovery, plan); survives conversation compression; exposed as four agent tools (`store_memory`, `retrieve_memory`, `list_memories`, `delete_memory`); tool results automatically persisted as `tool_run` memory entries
@@ -66,7 +67,7 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 - 📋 **Tool chaining macros** — define multi-step pipelines (e.g., subfinder → httpx → nuclei) as a single named operation
 
 ### UI / UX
-- 📋 **Fully translated English UI** — complete localization of all UI text (in progress in this release)
+- 🚧 **Fully translated English UI** — active localization work; `i18n.js` module shipped, English and Chinese translations added, `index.html` fallback texts migrated to English; remaining pages being finalized
 - ✅ **Dark / light theme toggle** — user-configurable dark/light color scheme; toggle button in the header; preference persisted in localStorage
 - 📋 **Improved attack-chain export** — export as PDF, PNG, or JSON for reporting
 - 📋 **Vulnerability report generator** — one-click HTML/Markdown pentest report from discovered vulnerabilities
@@ -144,7 +145,7 @@ See [README.md](README.md) for development setup instructions.
 
 ---
 
-*Last updated: 2026-03-13 — v1.4.0: dark/light theme toggle shipped; persistent memory expanded to 8 categories (tool_run, discovery, plan added); tool count grown to 140+; skills count grown to 24 (Android reverse engineering, mobile app security, LDAP/XPath injection added). This roadmap is subject to change. Follow the repository to stay updated.*
+*Last updated: 2026-03-18 — v1.5.1: Dark/light theme stabilized across all pages; `i18n.js` internationalization module added with English and Chinese translations; `index.html` and tool YAML files translated to English; dark theme CSS variables unified. Previous v1.5.0: WebShell Management module added (xterm.js terminal, remote file manager, AI assistant with streaming agent loop, PHP/ASP/ASPX/JSP support); config.yaml extended with `agent.tool_timeout_minutes`, `mcp.auth_header`/`mcp.auth_header_value`, and knowledge base rate-limiting fields. This roadmap is subject to change. Follow the repository to stay updated.*
 
 ---
 
