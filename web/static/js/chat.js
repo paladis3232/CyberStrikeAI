@@ -3597,7 +3597,9 @@ async function regenerateAttackChain() {
 // Export attack chain
 function exportAttackChain(format) {
     if (!attackChainCytoscape) {
-        alert(typeof window.t === 'function' ? window.t('chat.loadAttackChainFirst') : 'Please load the attack chain first');
+        if (typeof window.appToast === 'function') {
+            window.appToast(typeof window.t === 'function' ? window.t('chat.loadAttackChainFirst') : 'Please load the attack chain first', 'warning');
+        }
         return;
     }
 
@@ -3606,45 +3608,36 @@ function exportAttackChain(format) {
         try {
             if (format === 'png') {
                 try {
-                    const pngPromise = attackChainCytoscape.png({
-                        output: 'blob',
-                        bg: 'white',
+                    // Determine background: white for light theme, dark for dark theme
+                    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                    const bgColor = isDark ? '#0f172a' : '#ffffff';
+
+                    const pngDataUrl = attackChainCytoscape.png({
+                        output: 'base64uri',
+                        bg: bgColor,
                         full: true,
-                        scale: 1
+                        scale: 2  // 2× retina quality
                     });
-                    
-                    // Handle Promise
-                    if (pngPromise && typeof pngPromise.then === 'function') {
-                        pngPromise.then(blob => {
-                            if (!blob) {
-                                throw new Error('PNG export returned empty data');
-                            }
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `attack-chain-${currentAttackChainConversationId || 'export'}-${Date.now()}.png`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            setTimeout(() => URL.revokeObjectURL(url), 100);
-                        }).catch(err => {
-                            console.error('Failed to export PNG:', err);
-                            alert('Failed to export PNG: ' + (err.message || 'Unknown error'));
-                        });
-                    } else {
-                        // If not a Promise, use directly
-                        const url = URL.createObjectURL(pngPromise);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `attack-chain-${currentAttackChainConversationId || 'export'}-${Date.now()}.png`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        setTimeout(() => URL.revokeObjectURL(url), 100);
+
+                    if (!pngDataUrl || pngDataUrl === 'data:,') {
+                        throw new Error('PNG export returned empty data');
+                    }
+
+                    const a = document.createElement('a');
+                    a.href = pngDataUrl;
+                    a.download = `attack-chain-${currentAttackChainConversationId || 'export'}-${Date.now()}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                    if (typeof window.appToast === 'function') {
+                        window.appToast('Attack chain exported as PNG', 'success');
                     }
                 } catch (err) {
                     console.error('PNG export error:', err);
-                    alert('Failed to export PNG: ' + (err.message || 'Unknown error'));
+                    if (typeof window.appToast === 'function') {
+                        window.appToast('Failed to export PNG: ' + (err.message || 'Unknown error'), 'error');
+                    }
                 }
             } else if (format === 'svg') {
                 try {
@@ -3983,14 +3976,20 @@ function exportAttackChain(format) {
             } else if (format === 'pdf') {
                 exportAttackChainAsPDF().catch(err => {
                     console.error('PDF export error:', err);
-                    alert('Failed to export PDF: ' + (err.message || 'Unknown error'));
+                    if (typeof window.appToast === 'function') {
+                        window.appToast('Failed to export PDF: ' + (err.message || 'Unknown error'), 'error');
+                    }
                 });
             } else {
-                alert('Unsupported export format: ' + format);
+                if (typeof window.appToast === 'function') {
+                    window.appToast('Unsupported export format: ' + format, 'error');
+                }
             }
         } catch (error) {
             console.error('Export failed:', error);
-            alert('Export failed: ' + (error.message || 'Unknown error'));
+            if (typeof window.appToast === 'function') {
+                window.appToast('Export failed: ' + (error.message || 'Unknown error'), 'error');
+            }
         }
     }, 100); // Small delay to ensure graph is rendered
 }

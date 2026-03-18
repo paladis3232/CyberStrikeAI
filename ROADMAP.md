@@ -34,7 +34,7 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 - ✅ Role-based testing system (13 predefined roles: Penetration Testing, CTF, Web App Scanning, API Security, Binary Analysis, Cloud Security Audit, Digital Forensics, Container Security, Post-Exploitation, etc.)
 - ✅ Skills system (24 predefined skills: SQL injection, XSS, CSRF, SSRF, XXE, Command injection, File upload, IDOR, Deserialization, API security, Android reverse engineering, Container security, Cloud security audit, Network penetration, Mobile app security, LDAP/XPath injection, Incident response, Secure code review, Vulnerability assessment, Security automation, Security awareness training, Bitrix24 webhook exploitation, Business logic testing, and more)
 - ✅ Attack-chain graph with severity scoring and step-by-step replay
-- ✅ **Attack-chain export** — JSON export (full node/edge graph with metadata) and PDF export (formatted A4 report with summary table generated client-side via jsPDF + jsPDF-AutoTable)
+- ✅ **Attack-chain export** — JSON (full node/edge graph with metadata), PDF (formatted A4 report via jsPDF + jsPDF-AutoTable), and PNG (2× retina, theme-aware background) export formats
 - ✅ Vulnerability management — CRUD, severity/status tracking, statistics
 - ✅ Batch task management — create queues, add tasks, sequential execution with full status tracking
 - ✅ Knowledge base with vector search and hybrid (vector + BM25 keyword) retrieval
@@ -72,8 +72,8 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 
 ### UI / UX
 - ✅ **In-app dialog system** — toast, confirm, and prompt replace native browser dialogs; theme-aware
-- ✅ **Improved attack-chain export** — JSON and PDF export; PNG export planned
-- 📋 **Attack-chain PNG export** — screenshot-style image export of the graph canvas
+- ✅ **Improved attack-chain export** — JSON, PDF, and PNG export; PNG uses Cytoscape `.png()` at 2× retina scale with theme-aware background
+- ✅ **Attack-chain PNG export** — screenshot-style image export of the graph canvas; 2× retina quality, dark/light theme-aware background, `appToast` notifications
 - 📋 **Vulnerability report generator** — one-click HTML/Markdown pentest report from discovered vulnerabilities
 - 📋 **Real-time collaboration** — allow multiple users to observe or join a running session
 
@@ -149,7 +149,7 @@ See [README.md](README.md) for development setup instructions.
 
 ---
 
-*Last updated: 2026-03-18 — v1.6.0: Attack-chain JSON + PDF export (jsPDF + AutoTable, client-side); in-app dialog system (`ui-dialogs.js`) — themed toast/confirm/prompt replaces all native browser dialogs; comprehensive dark mode overhaul — fixed all remaining white/light areas (group detail view, content area, API docs page theme init, dashboard quick links, CTA block, memory badges, memory status/notification chips, attack chain export buttons, role select items, icon picker inputs); conversation delete UX improved — batch manager refreshes in-place immediately after deletion; `appConfirm` callback used for all delete confirmations to prevent stale handler accumulation; radare2 Docker install switched to `git clone + sys/install.sh` to replace broken `curl | bash` (no working directory issue); xsser installed from git source since it is no longer published on PyPI; WebShell conversations linked via `webshell_connection_id` DB column (auto-migrated); Default role simplified (skill list removed from YAML). Previous v1.5.3: Telegram inline keyboard confirmations shipped — `stop` and `delete` commands now show ✅/❌ inline buttons; 60-second TTL with per-user authorization; `callback_query` handling added to polling loop. Previous v1.5.2: Full English UI translation complete. Previous v1.5.1: Dark/light theme stabilized; i18n module added. Previous v1.5.0: WebShell Management module added. This roadmap is subject to change. Follow the repository to stay updated.*
+*Last updated: 2026-03-18 — v1.6.1: Attack-chain PNG export — 2× retina quality via Cytoscape `.png()`, theme-aware background (dark `#0f172a` / light `#ffffff`), `appToast` success/error notifications, all `alert()` calls in export function replaced with `appToast`. Previous v1.6.0: Attack-chain JSON + PDF export (jsPDF + AutoTable, client-side); in-app dialog system (`ui-dialogs.js`) — themed toast/confirm/prompt replaces all native browser dialogs; comprehensive dark mode overhaul — fixed all remaining white/light areas (group detail view, content area, API docs page theme init, dashboard quick links, CTA block, memory badges, memory status/notification chips, attack chain export buttons, role select items, icon picker inputs); conversation delete UX improved — batch manager refreshes in-place immediately after deletion; `appConfirm` callback used for all delete confirmations to prevent stale handler accumulation; radare2 Docker install switched to `git clone + sys/install.sh` to replace broken `curl | bash` (no working directory issue); xsser installed from git source since it is no longer published on PyPI; WebShell conversations linked via `webshell_connection_id` DB column (auto-migrated); Default role simplified (skill list removed from YAML). Previous v1.5.3: Telegram inline keyboard confirmations shipped — `stop` and `delete` commands now show ✅/❌ inline buttons; 60-second TTL with per-user authorization; `callback_query` handling added to polling loop. Previous v1.5.2: Full English UI translation complete. Previous v1.5.1: Dark/light theme stabilized; i18n module added. Previous v1.5.0: WebShell Management module added. This roadmap is subject to change. Follow the repository to stay updated.*
 
 ---
 
