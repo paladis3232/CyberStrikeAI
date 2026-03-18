@@ -290,7 +290,7 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 		knowledgeRetriever = knowledge.NewRetriever(knowledgeDB, embedder, retrievalConfig, log.Logger)
 
 		// create indexer
-		knowledgeIndexer = knowledge.NewIndexer(knowledgeDB, embedder, log.Logger, cfg.Knowledge.Embedding.MaxTokens)
+		knowledgeIndexer = knowledge.NewIndexer(knowledgeDB, embedder, log.Logger, cfg.Knowledge.Embedding.MaxTokens, &cfg.Knowledge.Indexing)
 
 		// register knowledge retrieval tool to MCP server
 		knowledge.RegisterKnowledgeTool(mcpServer, knowledgeRetriever, knowledgeManager, log.Logger)
@@ -645,9 +645,9 @@ func (a *App) Run() error {
 			a.logger.Info("starting MCP server", zap.String("address", mcpAddr))
 
 			mux := http.NewServeMux()
-			mux.HandleFunc("/mcp", a.mcpServer.HandleHTTP)
+			mux.HandleFunc("/mcp", a.mcpHandlerWithAuth)
 			// Backward-compatibility alias for legacy SSE endpoint configs.
-			mux.HandleFunc("/mcp/sse", a.mcpServer.HandleHTTP)
+			mux.HandleFunc("/mcp/sse", a.mcpHandlerWithAuth)
 
 			if err := http.ListenAndServe(mcpAddr, mux); err != nil {
 				a.logger.Error("MCP server failed to start", zap.Error(err))
@@ -660,6 +660,23 @@ func (a *App) Run() error {
 	a.logger.Info("starting HTTP server", zap.String("address", addr))
 
 	return a.router.Run(addr)
+}
+
+// mcpHandlerWithAuth forwards to the MCP server after verifying the auth header.
+// If auth_header is configured in the MCP config, the request header must match auth_header_value.
+// If auth_header is empty, the request is forwarded without auth checks.
+func (a *App) mcpHandlerWithAuth(w http.ResponseWriter, r *http.Request) {
+	cfg := a.config.MCP
+	if cfg.AuthHeader != "" {
+		if r.Header.Get(cfg.AuthHeader) != cfg.AuthHeaderValue {
+			a.logger.Debug("MCP auth failed: header missing or value mismatch", zap.String("header", cfg.AuthHeader))
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error":"unauthorized"}`)) //nolint:errcheck
+			return
+		}
+	}
+	a.mcpServer.HandleHTTP(w, r)
 }
 
 // Shutdown shuts down the application

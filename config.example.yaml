@@ -139,6 +139,7 @@ agent:
     log_dir: /tmp            # Directory for SSLStrip capture logs
     auto_proxy: false        # Auto-set Cuttlefish VM proxy to SSLStrip when tool starts
   parallel_tool_wait_seconds: 60
+  tool_timeout: 1800 # Per-tool execution timeout in seconds (0 = unlimited); 1800 = 30 min
 # Database configuration
 database:
   path: data/conversations.db # SQLite database file path; used to store conversation history and messages
@@ -171,6 +172,8 @@ mcp:
   enabled: true # Whether to enable the MCP server (HTTP mode)
   host: 0.0.0.0 # MCP server listen address
   port: 18081 # MCP server port
+  auth_header: ""       # Header name for MCP endpoint auth (e.g. "X-MCP-Token"); leave empty to disable auth
+  auth_header_value: "" # Secret value the caller must supply in that header
 # External MCP configuration
 external_mcp:
   servers:
@@ -214,6 +217,14 @@ knowledge:
     top_k: 10 # Number of Top-K results returned by retrieval
     similarity_threshold: 0.7 # Similarity threshold (0–1); results below this value are filtered out
     hybrid_weight: 0.7 # Hybrid retrieval weight (0–1); weight of vector retrieval — 1.0 = pure vector retrieval, 0.0 = pure keyword retrieval
+  indexing:
+    chunk_size: 0             # Max tokens per chunk (0 = auto-compute from max_tokens above — recommended)
+    chunk_overlap: 50         # Overlap tokens between adjacent chunks (maintains context continuity)
+    max_chunks_per_item: 0    # Limit chunks per knowledge item (0 = unlimited; set e.g. 20 to cap API quota)
+    max_rpm: 0                # Max embedding API requests per minute (0 = unlimited)
+    rate_limit_delay_ms: 300  # Fixed delay between embedding calls in ms; overrides max_rpm when both set
+    max_retries: 3            # Max retries on transient 429/5xx errors
+    retry_delay_ms: 1000      # Base retry delay in ms (doubles each attempt: 1s, 2s, 3s…)
 # ============================================
 # Bot Configuration (WeCom, DingTalk, Lark/Feishu)
 # ============================================

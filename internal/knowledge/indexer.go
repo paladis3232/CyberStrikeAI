@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"cyberstrike-ai/internal/config"
+
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -22,6 +24,14 @@ type Indexer struct {
 	chunkSize int // maximum estimated token count per chunk
 	overlap   int // overlapping token count between chunks
 
+	// Rate limiting
+	rateLimitDelay   time.Duration // fixed delay between embedding API calls (0 = none)
+	maxChunksPerItem int           // max chunks per knowledge item (0 = unlimited)
+
+	// Retry settings
+	maxRetries   int           // max retry attempts per chunk (0 = no retries)
+	retryDelay   time.Duration // base delay between retries (doubles each attempt)
+
 	// error tracking
 	mu            sync.RWMutex
 	lastError     string    // most recent error message
@@ -29,23 +39,69 @@ type Indexer struct {
 	errorCount    int       // consecutive error count
 }
 
-// NewIndexer creates a new indexer. embeddingMaxTokens is the embedding model's
-// context limit (0 uses the default of 512).
-func NewIndexer(db *sql.DB, embedder *Embedder, logger *zap.Logger, embeddingMaxTokens int) *Indexer {
+// NewIndexer creates a new indexer.
+// embeddingMaxTokens is the embedding model's context limit (0 uses the default of 512).
+// indexingCfg optionally overrides chunk size, overlap, rate limiting, and retry settings.
+func NewIndexer(db *sql.DB, embedder *Embedder, logger *zap.Logger, embeddingMaxTokens int, indexingCfg *config.IndexingConfig) *Indexer {
 	if embeddingMaxTokens <= 0 {
 		embeddingMaxTokens = 512
 	}
-	// Reserve ~12% for the metadata prefix ("[Risk Type: ...] [Title: ...]\n")
-	chunkSize := embeddingMaxTokens - embeddingMaxTokens/8
+
+	// Determine chunk size: explicit config takes precedence over auto-computed value.
+	chunkSize := 0
+	if indexingCfg != nil && indexingCfg.ChunkSize > 0 {
+		chunkSize = indexingCfg.ChunkSize
+	} else {
+		// Reserve ~12% for the metadata prefix ("[Risk Type: ...] [Title: ...]\n")
+		chunkSize = embeddingMaxTokens - embeddingMaxTokens/8
+	}
 	if chunkSize < 64 {
 		chunkSize = 64
 	}
+
+	// Determine overlap.
+	overlap := 50
+	if indexingCfg != nil && indexingCfg.ChunkOverlap > 0 {
+		overlap = indexingCfg.ChunkOverlap
+	}
+
+	// Determine rate-limit delay.
+	var rateLimitDelay time.Duration
+	if indexingCfg != nil {
+		if indexingCfg.RateLimitDelayMs > 0 {
+			rateLimitDelay = time.Duration(indexingCfg.RateLimitDelayMs) * time.Millisecond
+		} else if indexingCfg.MaxRPM > 0 {
+			// Convert RPM to minimum interval between requests.
+			rateLimitDelay = time.Duration(60000/indexingCfg.MaxRPM) * time.Millisecond
+		}
+	}
+
+	// Determine retry settings.
+	maxRetries := 3
+	retryDelay := time.Second
+	maxChunksPerItem := 0
+	if indexingCfg != nil {
+		if indexingCfg.MaxRetries > 0 {
+			maxRetries = indexingCfg.MaxRetries
+		}
+		if indexingCfg.RetryDelayMs > 0 {
+			retryDelay = time.Duration(indexingCfg.RetryDelayMs) * time.Millisecond
+		}
+		if indexingCfg.MaxChunksPerItem > 0 {
+			maxChunksPerItem = indexingCfg.MaxChunksPerItem
+		}
+	}
+
 	return &Indexer{
-		db:        db,
-		embedder:  embedder,
-		logger:    logger,
-		chunkSize: chunkSize,
-		overlap:   50,
+		db:               db,
+		embedder:         embedder,
+		logger:           logger,
+		chunkSize:        chunkSize,
+		overlap:          overlap,
+		rateLimitDelay:   rateLimitDelay,
+		maxChunksPerItem: maxChunksPerItem,
+		maxRetries:       maxRetries,
+		retryDelay:       retryDelay,
 	}
 }
 
@@ -265,6 +321,28 @@ func (idx *Indexer) estimateTokens(text string) int {
 	return len([]rune(text)) / 4
 }
 
+// embedWithRetry calls EmbedText with exponential-backoff retries.
+func (idx *Indexer) embedWithRetry(ctx context.Context, text string) ([]float32, error) {
+	var lastErr error
+	attempts := idx.maxRetries + 1 // at least one attempt
+	for attempt := 0; attempt < attempts; attempt++ {
+		if attempt > 0 && idx.retryDelay > 0 {
+			delay := idx.retryDelay * time.Duration(attempt) // doubles each retry
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+		embedding, err := idx.embedder.EmbedText(ctx, text)
+		if err == nil {
+			return embedding, nil
+		}
+		lastErr = err
+	}
+	return nil, lastErr
+}
+
 // IndexItem indexes a knowledge item (chunks and vectorizes it)
 func (idx *Indexer) IndexItem(ctx context.Context, itemID string) error {
 	if idx.embedder == nil {
@@ -286,6 +364,17 @@ func (idx *Indexer) IndexItem(ctx context.Context, itemID string) error {
 
 	// chunk
 	chunks := idx.ChunkText(content)
+
+	// apply MaxChunksPerItem limit if configured
+	if idx.maxChunksPerItem > 0 && len(chunks) > idx.maxChunksPerItem {
+		idx.logger.Info("truncating chunks to MaxChunksPerItem limit",
+			zap.String("itemId", itemID),
+			zap.Int("totalChunks", len(chunks)),
+			zap.Int("limit", idx.maxChunksPerItem),
+		)
+		chunks = chunks[:idx.maxChunksPerItem]
+	}
+
 	idx.logger.Info("knowledge item chunking complete", zap.String("itemId", itemID), zap.Int("chunks", len(chunks)))
 
 	// track errors for this knowledge item
@@ -295,12 +384,21 @@ func (idx *Indexer) IndexItem(ctx context.Context, itemID string) error {
 
 	// vectorize each chunk (include category and title info so that risk type can be matched during vector retrieval)
 	for i, chunk := range chunks {
+		// apply rate-limit delay before each embedding call (except the first)
+		if i > 0 && idx.rateLimitDelay > 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(idx.rateLimitDelay):
+			}
+		}
+
 		// include category and title info in the text to be vectorized
 		// format: "[Risk Type: {category}] [Title: {title}]\n{chunk content}"
 		// this way the vector embedding includes risk type info; even if SQL filtering fails, vector similarity can still help match
 		textForEmbedding := fmt.Sprintf("[Risk Type: %s] [Title: %s]\n%s", category, title, chunk)
 
-		embedding, err := idx.embedder.EmbedText(ctx, textForEmbedding)
+		embedding, err := idx.embedWithRetry(ctx, textForEmbedding)
 		if err != nil {
 			itemErrorCount++
 			if firstError == nil {

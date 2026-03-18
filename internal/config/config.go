@@ -77,9 +77,11 @@ type LogConfig struct {
 }
 
 type MCPConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Host    string `yaml:"host"`
-	Port    int    `yaml:"port"`
+	Enabled         bool   `yaml:"enabled"`
+	Host            string `yaml:"host"`
+	Port            int    `yaml:"port"`
+	AuthHeader      string `yaml:"auth_header,omitempty"`       // Auth header name; empty = no auth
+	AuthHeaderValue string `yaml:"auth_header_value,omitempty"` // Auth header value; must match the request header
 }
 
 type OpenAIConfig struct {
@@ -722,16 +724,41 @@ func Default() *Config {
 				SimilarityThreshold: 0.7,
 				HybridWeight:        0.7,
 			},
+			Indexing: IndexingConfig{
+				ChunkOverlap: 50,   // 50-token overlap between chunks
+				MaxRetries:   3,    // retry up to 3 times on transient API errors
+				RetryDelayMs: 1000, // start with 1 s delay, doubles each attempt
+			},
 		},
 	}
 }
 
 // KnowledgeConfig holds the knowledge base configuration.
 type KnowledgeConfig struct {
-	Enabled   bool            `yaml:"enabled" json:"enabled"`     // Whether to enable knowledge retrieval
-	BasePath  string          `yaml:"base_path" json:"base_path"` // Knowledge base path
+	Enabled   bool            `yaml:"enabled" json:"enabled"`               // Whether to enable knowledge retrieval
+	BasePath  string          `yaml:"base_path" json:"base_path"`           // Knowledge base path
 	Embedding EmbeddingConfig `yaml:"embedding" json:"embedding"`
 	Retrieval RetrievalConfig `yaml:"retrieval" json:"retrieval"`
+	Indexing  IndexingConfig  `yaml:"indexing,omitempty" json:"indexing,omitempty"` // Index build configuration (chunk sizes, rate limiting, retries)
+}
+
+// IndexingConfig controls how knowledge items are chunked, embedded, and rate-limited during index builds.
+type IndexingConfig struct {
+	// Chunk parameters
+	ChunkSize        int `yaml:"chunk_size,omitempty" json:"chunk_size,omitempty"`                 // Max tokens per chunk (0 = auto from embedding model max_tokens)
+	ChunkOverlap     int `yaml:"chunk_overlap,omitempty" json:"chunk_overlap,omitempty"`           // Overlap tokens between chunks (default 50)
+	MaxChunksPerItem int `yaml:"max_chunks_per_item,omitempty" json:"max_chunks_per_item,omitempty"` // Max chunks per knowledge item (0 = unlimited)
+
+	// Rate limiting (avoids 429 errors from embedding APIs)
+	MaxRPM           int `yaml:"max_rpm,omitempty" json:"max_rpm,omitempty"`                       // Max requests per minute (0 = unlimited)
+	RateLimitDelayMs int `yaml:"rate_limit_delay_ms,omitempty" json:"rate_limit_delay_ms,omitempty"` // Fixed delay between embedding calls (ms); overrides MaxRPM when both set
+
+	// Retry on transient errors
+	MaxRetries   int `yaml:"max_retries,omitempty" json:"max_retries,omitempty"`     // Max retry attempts per chunk (default 3)
+	RetryDelayMs int `yaml:"retry_delay_ms,omitempty" json:"retry_delay_ms,omitempty"` // Base delay between retries (ms, doubles each attempt; default 1000)
+
+	// Batch processing (reserved for future use)
+	BatchSize int `yaml:"batch_size,omitempty" json:"batch_size,omitempty"` // Batch size for bulk embedding calls (0 = one by one)
 }
 
 // EmbeddingConfig holds the embedding model configuration.
