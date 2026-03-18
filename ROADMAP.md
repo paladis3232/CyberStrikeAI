@@ -28,18 +28,20 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 - ✅ Password-protected Web UI with Bearer-token auth and session management
 - ✅ Streaming SSE output for real-time task progress
 - ✅ **Docker lifecycle management** — deploy, update, start, stop, restart, remove via `run_docker.sh` or System Settings UI; REST API (`/api/docker/status`, `/api/docker/logs`, `/api/docker/action`); proxy (SOCKS/HTTP/Tor) and VPN-container modes
+- ✅ **In-app dialog system** (`ui-dialogs.js`) — toast notifications (success/error/warning/info), styled confirm dialogs with async callback flow, and prompt modals replace all native `alert`/`confirm`/`prompt` calls; fully theme-aware (dark/light)
 
 ### Security Testing Features
 - ✅ Role-based testing system (13 predefined roles: Penetration Testing, CTF, Web App Scanning, API Security, Binary Analysis, Cloud Security Audit, Digital Forensics, Container Security, Post-Exploitation, etc.)
 - ✅ Skills system (24 predefined skills: SQL injection, XSS, CSRF, SSRF, XXE, Command injection, File upload, IDOR, Deserialization, API security, Android reverse engineering, Container security, Cloud security audit, Network penetration, Mobile app security, LDAP/XPath injection, Incident response, Secure code review, Vulnerability assessment, Security automation, Security awareness training, Bitrix24 webhook exploitation, Business logic testing, and more)
 - ✅ Attack-chain graph with severity scoring and step-by-step replay
+- ✅ **Attack-chain export** — JSON export (full node/edge graph with metadata) and PDF export (formatted A4 report with summary table generated client-side via jsPDF + jsPDF-AutoTable)
 - ✅ Vulnerability management — CRUD, severity/status tracking, statistics
 - ✅ Batch task management — create queues, add tasks, sequential execution with full status tracking
 - ✅ Knowledge base with vector search and hybrid (vector + BM25 keyword) retrieval
 - ✅ **Corpus-level BM25 Okapi** — real inverse document frequency scoring built from all indexed chunks; replaces the previous per-document approximation
 - ✅ Auto-indexing of Markdown knowledge files with incremental updates
 - ✅ FOFA / ZoomEye search engine integration
-- ✅ **WebShell Management** — built-in webshell connection manager (PHP/ASP/ASPX/JSP); xterm.js virtual terminal for command execution; remote file manager (list, upload, download, read, edit, delete); AI Assistant tab with streaming agent loop and per-connection conversation history; REST API (`/api/webshell/connections`, `/api/webshell/exec`, `/api/webshell/file`)
+- ✅ **WebShell Management** — built-in webshell connection manager (PHP/ASP/ASPX/JSP); xterm.js virtual terminal for command execution; remote file manager (list, upload, download, read, edit, delete); AI Assistant tab with streaming agent loop and per-connection conversation history; conversations linked to webshell connections via `webshell_connection_id`; REST API (`/api/webshell/connections`, `/api/webshell/exec`, `/api/webshell/file`)
 
 ### Agent Intelligence
 - ✅ **Persistent memory** — cross-session key-value store (SQLite-backed) with 8 categories (credential, target, vulnerability, fact, note, tool_run, discovery, plan); survives conversation compression; exposed as four agent tools (`store_memory`, `retrieve_memory`, `list_memories`, `delete_memory`); tool results automatically persisted as `tool_run` memory entries
@@ -50,9 +52,11 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 - ✅ Lark (Feishu) chatbot via persistent long-lived connections
 - ✅ Telegram bot via long-polling — multi-user, progress streaming, MCP tool control, role and conversation management; configurable via Web UI
 - ✅ Web console with terminal, task monitor, conversation groups, and role selector
-- ✅ Conversation grouping — pinning, renaming, batch management
+- ✅ Conversation grouping — pinning, renaming, batch management; batch manager refreshes immediately after individual deletions
 - ✅ MCP stdio mode for Cursor / IDE integration
-- ✅ OpenAPI documentation endpoint
+- ✅ OpenAPI documentation endpoint with interactive testing and dark/light theme support
+- ✅ **Fully translated English UI** — `i18n.js` module shipped with English and Chinese translations; all hardcoded strings replaced
+- ✅ **Dark / light theme toggle** — fully unified dark mode across all pages (dashboard, API docs, group detail view, memory badges, attack chain export buttons, quick links, CTA blocks); preference persisted in `localStorage`; API Docs page reads theme on load to avoid white flash
 
 ---
 
@@ -67,9 +71,9 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 - 📋 **Tool chaining macros** — define multi-step pipelines (e.g., subfinder → httpx → nuclei) as a single named operation
 
 ### UI / UX
-- ✅ **Fully translated English UI** — `i18n.js` module shipped with English and Chinese translations; all hardcoded Chinese strings in `chat.js`, `monitor.js`, and `vulnerability.js` replaced with English equivalents; full-width punctuation (`：`, `！`) normalized to ASCII
-- ✅ **Dark / light theme toggle** — user-configurable dark/light color scheme; toggle button in the header; preference persisted in localStorage
-- 📋 **Improved attack-chain export** — export as PDF, PNG, or JSON for reporting
+- ✅ **In-app dialog system** — toast, confirm, and prompt replace native browser dialogs; theme-aware
+- ✅ **Improved attack-chain export** — JSON and PDF export; PNG export planned
+- 📋 **Attack-chain PNG export** — screenshot-style image export of the graph canvas
 - 📋 **Vulnerability report generator** — one-click HTML/Markdown pentest report from discovered vulnerabilities
 - 📋 **Real-time collaboration** — allow multiple users to observe or join a running session
 
@@ -77,7 +81,7 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 - 📋 **Slack / Teams bot** — extend the chatbot system to Slack and Microsoft Teams
 - 📋 **Webhook notifications** — send task completion, vulnerability discovery, or attack-chain events to external systems (Slack, PagerDuty, etc.)
 - 📋 **JIRA / GitHub Issues integration** — automatically create issues from discovered vulnerabilities
-- 📋 **Telegram inline keyboard** — add interactive buttons (confirm/cancel actions, quick role switching) to Telegram bot responses
+- ✅ **Telegram inline keyboard** — interactive buttons (confirm/cancel actions, quick role switching) for dangerous bot commands; 60-second TTL with per-user authorization
 - 📋 **Telegram file transfer** — send large tool output as downloadable files when the result exceeds the message size limit
 
 ---
@@ -137,7 +141,7 @@ This roadmap outlines the planned development trajectory for CyberStrikeAI. Item
 
 We welcome contributions in all areas. To propose a roadmap item or discuss implementation details:
 
-1. **Open an issue** using the [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.md)
+1. **Open an issue** using the Feature Request template
 2. **Join the discussion** on existing roadmap issues
 3. **Submit a PR** — all contributions are reviewed and credited
 
@@ -145,7 +149,7 @@ See [README.md](README.md) for development setup instructions.
 
 ---
 
-*Last updated: 2026-03-18 — v1.5.3: Telegram inline keyboard confirmations shipped — `stop` and `delete` commands now show ✅/❌ inline buttons; 60-second TTL with per-user authorization; `callback_query` handling added to polling loop; `sendMessageWithKeyboard`, `editMessageRemoveKeyboard`, `answerCallbackQuery` API methods added. Previous v1.5.2: Full English UI translation complete; all remaining hardcoded Chinese strings in `chat.js`, `monitor.js`, and `vulnerability.js` replaced with English; full-width punctuation normalized to ASCII. Previous v1.5.1: Dark/light theme stabilized across all pages; `i18n.js` internationalization module added with English and Chinese translations; `index.html` and tool YAML files translated to English; dark theme CSS variables unified. Previous v1.5.0: WebShell Management module added (xterm.js terminal, remote file manager, AI assistant with streaming agent loop, PHP/ASP/ASPX/JSP support); config.yaml extended with `agent.tool_timeout_minutes`, `mcp.auth_header`/`mcp.auth_header_value`, and knowledge base rate-limiting fields. This roadmap is subject to change. Follow the repository to stay updated.*
+*Last updated: 2026-03-18 — v1.6.0: Attack-chain JSON + PDF export (jsPDF + AutoTable, client-side); in-app dialog system (`ui-dialogs.js`) — themed toast/confirm/prompt replaces all native browser dialogs; comprehensive dark mode overhaul — fixed all remaining white/light areas (group detail view, content area, API docs page theme init, dashboard quick links, CTA block, memory badges, memory status/notification chips, attack chain export buttons, role select items, icon picker inputs); conversation delete UX improved — batch manager refreshes in-place immediately after deletion; `appConfirm` callback used for all delete confirmations to prevent stale handler accumulation; radare2 Docker install switched to `git clone + sys/install.sh` to replace broken `curl | bash` (no working directory issue); xsser installed from git source since it is no longer published on PyPI; WebShell conversations linked via `webshell_connection_id` DB column (auto-migrated); Default role simplified (skill list removed from YAML). Previous v1.5.3: Telegram inline keyboard confirmations shipped — `stop` and `delete` commands now show ✅/❌ inline buttons; 60-second TTL with per-user authorization; `callback_query` handling added to polling loop. Previous v1.5.2: Full English UI translation complete. Previous v1.5.1: Dark/light theme stabilized; i18n module added. Previous v1.5.0: WebShell Management module added. This roadmap is subject to change. Follow the repository to stay updated.*
 
 ---
 

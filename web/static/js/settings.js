@@ -350,7 +350,28 @@ async function runDockerAction(action) {
     };
 
     if (action === 'remove') {
-        if (!confirm('Remove docker stack (containers + volumes)?')) return;
+        appConfirm('Remove docker stack (containers + volumes)?', async function() {
+            if (output) output.textContent = `Running action: ${action}...\n`;
+            try {
+                const res = await apiFetch('/api/docker/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.error || data.output || 'Action failed');
+                }
+                if (output) {
+                    output.textContent = `Action: ${action}\nSuccess: ${data.success}\nExit Code: ${data.exitCode}\n\n${data.output || ''}`;
+                    output.scrollTop = output.scrollHeight;
+                }
+                await refreshDockerStatus();
+            } catch (error) {
+                if (output) output.textContent += `\nError: ${error.message}`;
+            }
+        });
+        return;
     }
 
     if (output) output.textContent = `Running action: ${action}...\n`;
@@ -1937,30 +1958,29 @@ async function saveExternalMCP() {
 
 // DeleteExternalMCP
 async function deleteExternalMCP(name) {
-    if (!confirm(`Are you sure you want to delete external MCP "${name}"?`)) {
-        return;
-    }
-    
-    try {
-        const response = await apiFetch(`/api/external-mcp/${encodeURIComponent(name)}`, {
-            method: 'DELETE',
-        });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Delete failed');
+    appConfirm(`Are you sure you want to delete external MCP "${name}"?`, async function() {
+        try {
+            const response = await apiFetch(`/api/external-mcp/${encodeURIComponent(name)}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Delete failed');
+            }
+
+            await loadExternalMCPs();
+            // Refresh chat interface tool list, remove deleted MCP tools
+            if (typeof window !== 'undefined' && typeof window.refreshMentionTools === 'function') {
+                window.refreshMentionTools();
+            }
+            alert('Deleted successfully');
+        } catch (error) {
+            console.error('DeleteExternalMCPFailed:', error);
+            alert('Failed to delete: ' + error.message);
         }
-        
-        await loadExternalMCPs();
-        // Refresh chat interface tool list, remove deleted MCP tools
-        if (typeof window !== 'undefined' && typeof window.refreshMentionTools === 'function') {
-            window.refreshMentionTools();
-        }
-        alert('Deleted successfully');
-    } catch (error) {
-        console.error('DeleteExternalMCPFailed:', error);
-        alert('Failed to delete: ' + error.message);
-    }
+    });
+    return;
 }
 
 // Toggle external MCP start/stop

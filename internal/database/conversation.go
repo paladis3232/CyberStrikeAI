@@ -33,13 +33,26 @@ type Message struct {
 
 // CreateConversation creates a new conversation
 func (db *DB) CreateConversation(title string) (*Conversation, error) {
+	return db.CreateConversationWithWebshell("", title)
+}
+
+// CreateConversationWithWebshell creates a new conversation optionally bound to a WebShell connection ID
+func (db *DB) CreateConversationWithWebshell(webshellConnectionID, title string) (*Conversation, error) {
 	id := uuid.New().String()
 	now := time.Now()
 
-	_, err := db.Exec(
-		"INSERT INTO conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
-		id, title, now, now,
-	)
+	var err error
+	if webshellConnectionID != "" {
+		_, err = db.Exec(
+			"INSERT INTO conversations (id, title, created_at, updated_at, webshell_connection_id) VALUES (?, ?, ?, ?, ?)",
+			id, title, now, now, webshellConnectionID,
+		)
+	} else {
+		_, err = db.Exec(
+			"INSERT INTO conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
+			id, title, now, now,
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to create conversation: %w", err)
 	}
@@ -50,6 +63,116 @@ func (db *DB) CreateConversation(title string) (*Conversation, error) {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}, nil
+}
+
+// WebShellConversationItem is used for the sidebar list (no messages)
+type WebShellConversationItem struct {
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// GetConversationByWebshellConnectionID retrieves the most recent conversation for a given WebShell connection
+func (db *DB) GetConversationByWebshellConnectionID(connectionID string) (*Conversation, error) {
+	if connectionID == "" {
+		return nil, fmt.Errorf("connectionID is empty")
+	}
+	var conv Conversation
+	var createdAt, updatedAt string
+	var pinned int
+	err := db.QueryRow(
+		"SELECT id, title, pinned, created_at, updated_at FROM conversations WHERE webshell_connection_id = ? ORDER BY updated_at DESC LIMIT 1",
+		connectionID,
+	).Scan(&conv.ID, &conv.Title, &pinned, &createdAt, &updatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to query conversation: %w", err)
+	}
+	conv.Pinned = pinned != 0
+	if t, e := time.Parse("2006-01-02 15:04:05.999999999-07:00", createdAt); e == nil {
+		conv.CreatedAt = t
+	} else if t, e := time.Parse("2006-01-02 15:04:05", createdAt); e == nil {
+		conv.CreatedAt = t
+	} else {
+		conv.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+	}
+	if t, e := time.Parse("2006-01-02 15:04:05.999999999-07:00", updatedAt); e == nil {
+		conv.UpdatedAt = t
+	} else if t, e := time.Parse("2006-01-02 15:04:05", updatedAt); e == nil {
+		conv.UpdatedAt = t
+	} else {
+		conv.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	}
+	messages, err := db.GetMessages(conv.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load messages: %w", err)
+	}
+	conv.Messages = messages
+
+	processDetailsMap, err := db.GetProcessDetailsByConversation(conv.ID)
+	if err != nil {
+		db.logger.Warn("failed to load process details", zap.Error(err))
+		processDetailsMap = make(map[string][]ProcessDetail)
+	}
+	for i := range conv.Messages {
+		if details, ok := processDetailsMap[conv.Messages[i].ID]; ok {
+			detailsJSON := make([]map[string]interface{}, len(details))
+			for j, detail := range details {
+				var data interface{}
+				if detail.Data != "" {
+					if err := json.Unmarshal([]byte(detail.Data), &data); err != nil {
+						db.logger.Warn("failed to parse process detail data", zap.Error(err))
+					}
+				}
+				detailsJSON[j] = map[string]interface{}{
+					"id":             detail.ID,
+					"messageId":      detail.MessageID,
+					"conversationId": detail.ConversationID,
+					"eventType":      detail.EventType,
+					"message":        detail.Message,
+					"data":           data,
+					"createdAt":      detail.CreatedAt,
+				}
+			}
+			conv.Messages[i].ProcessDetails = detailsJSON
+		}
+	}
+
+	return &conv, nil
+}
+
+// ListConversationsByWebshellConnectionID lists all conversations for a WebShell connection (newest first)
+func (db *DB) ListConversationsByWebshellConnectionID(connectionID string) ([]WebShellConversationItem, error) {
+	if connectionID == "" {
+		return nil, nil
+	}
+	rows, err := db.Query(
+		"SELECT id, title, updated_at FROM conversations WHERE webshell_connection_id = ? ORDER BY updated_at DESC",
+		connectionID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query conversation list: %w", err)
+	}
+	defer rows.Close()
+	var list []WebShellConversationItem
+	for rows.Next() {
+		var item WebShellConversationItem
+		var updatedAt string
+		if err := rows.Scan(&item.ID, &item.Title, &updatedAt); err != nil {
+			continue
+		}
+		if t, e := time.Parse("2006-01-02 15:04:05.999999999-07:00", updatedAt); e == nil {
+			item.UpdatedAt = t
+		} else if t, e := time.Parse("2006-01-02 15:04:05", updatedAt); e == nil {
+			item.UpdatedAt = t
+		} else {
+			item.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+		}
+		list = append(list, item)
+	}
+	return list, rows.Err()
 }
 
 // GetConversation gets a conversation

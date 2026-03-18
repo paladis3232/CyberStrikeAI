@@ -567,6 +567,9 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 	// set robot connection restarter, so new Lark config takes effect without restarting the service
 	configHandler.SetRobotRestarter(app)
 
+	// initialize webshell handler
+	webshellHandler := handler.NewWebShellHandler(log.Logger, db)
+
 	// set up routes (using App instance for dynamic handler access)
 	setupRoutes(
 		router,
@@ -590,6 +593,7 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 		mcpServer,
 		authManager,
 		openAPIHandler,
+		webshellHandler,
 	)
 
 	return app, nil
@@ -742,6 +746,7 @@ func setupRoutes(
 	mcpServer *mcp.Server,
 	authManager *security.AuthManager,
 	openAPIHandler *handler.OpenAPIHandler,
+	webshellHandler *handler.WebShellHandler,
 ) {
 	// API routes
 	api := router.Group("/api")
@@ -1162,6 +1167,16 @@ func setupRoutes(
 		protected.POST("/vulnerabilities", vulnerabilityHandler.CreateVulnerability)
 		protected.PUT("/vulnerabilities/:id", vulnerabilityHandler.UpdateVulnerability)
 		protected.DELETE("/vulnerabilities/:id", vulnerabilityHandler.DeleteVulnerability)
+
+		// webshell management
+		protected.GET("/webshell/connections", webshellHandler.ListConnections)
+		protected.POST("/webshell/connections", webshellHandler.CreateConnection)
+		protected.GET("/webshell/connections/:id/ai-history", webshellHandler.GetAIHistory)
+		protected.GET("/webshell/connections/:id/ai-conversations", webshellHandler.ListAIConversations)
+		protected.PUT("/webshell/connections/:id", webshellHandler.UpdateConnection)
+		protected.DELETE("/webshell/connections/:id", webshellHandler.DeleteConnection)
+		protected.POST("/webshell/exec", webshellHandler.Exec)
+		protected.POST("/webshell/file", webshellHandler.FileOp)
 
 		// role management
 		protected.GET("/roles", roleHandler.GetRoles)

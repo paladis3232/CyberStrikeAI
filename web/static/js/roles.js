@@ -1290,9 +1290,15 @@ async function saveRole() {
             const toolNames = disabledTools.map(t => t.name).join(', ');
             const message = `The following ${disabledTools.length} tool(s) are not enabled in MCP management and cannot be configured for the role:\n\n${toolNames}\n\nPlease enable these tools in "MCP Management" first, then configure them in the role.\n\nContinue saving? (Only enabled tools will be saved)`;
 
-            if (!confirm(message)) {
-                return; // User cancelled save
-            }
+            appConfirm(message, async function() {
+                // If using all tools, no need to get the tool list
+                if (!roleUsesAllTools) {
+                    // Get the list of selected tools (only including tools enabled in MCP management)
+                    tools = await getSelectedRoleTools();
+                }
+                await _doSaveRole(name, description, icon, userPrompt, enabled, isEdit, tools, disabledTools);
+            });
+            return; // User cancelled save
         }
 
         // If using all tools, no need to get the tool list
@@ -1302,6 +1308,10 @@ async function saveRole() {
         }
     }
 
+    await _doSaveRole(name, description, icon, userPrompt, enabled, isEdit, tools, disabledTools);
+}
+
+async function _doSaveRole(name, description, icon, userPrompt, enabled, isEdit, tools, disabledTools) {
     // Get selected skills
     const skills = Array.from(roleSelectedSkills);
 
@@ -1361,32 +1371,31 @@ async function deleteRole(roleName) {
         return;
     }
 
-    if (!confirm(`Are you sure you want to delete the role "${roleName}"? This action cannot be undone.`)) {
-        return;
-    }
+    appConfirm(`Are you sure you want to delete the role "${roleName}"? This action cannot be undone.`, async function() {
+        try {
+            const response = await apiFetch(`/api/roles/${encodeURIComponent(roleName)}`, {
+                method: 'DELETE'
+            });
 
-    try {
-        const response = await apiFetch(`/api/roles/${encodeURIComponent(roleName)}`, {
-            method: 'DELETE'
-        });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Delete role failed');
+            }
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Delete role failed');
+            showNotification('Role deleted', 'success');
+
+            // If the deleted role is the currently selected one, switch to the Default role
+            if (currentRole === roleName) {
+                handleRoleChange('');
+            }
+
+            await refreshRoles();
+        } catch (error) {
+            console.error('Delete role failed:', error);
+            showNotification('Delete role failed: ' + error.message, 'error');
         }
-
-        showNotification('Role deleted', 'success');
-
-        // If the deleted role is the currently selected one, switch to the Default role
-        if (currentRole === roleName) {
-            handleRoleChange('');
-        }
-
-        await refreshRoles();
-    } catch (error) {
-        console.error('Delete role failed:', error);
-        showNotification('Delete role failed: ' + error.message, 'error');
-    }
+    });
+    return;
 }
 
 // Initialize role list on page switch

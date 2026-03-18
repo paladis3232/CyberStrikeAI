@@ -410,32 +410,35 @@
     }
 
     async function deleteMemoryEntry(id) {
-        if (!confirm('Delete this memory entry? This cannot be undone.')) return;
-        try {
-            await apiFetch(`/api/memories/${id}`, { method: 'DELETE' });
-            showMemoryNotification('Entry deleted.', 'success');
-            await Promise.all([loadMemoryEntries(true), loadMemoryStats()]);
-        } catch (e) {
-            showMemoryNotification(`Delete failed: ${e.message}`, 'error');
-        }
+        appConfirm('Delete this memory entry? This cannot be undone.', async function() {
+            try {
+                await apiFetch(`/api/memories/${id}`, { method: 'DELETE' });
+                showMemoryNotification('Entry deleted.', 'success');
+                await Promise.all([loadMemoryEntries(true), loadMemoryStats()]);
+            } catch (e) {
+                showMemoryNotification(`Delete failed: ${e.message}`, 'error');
+            }
+        });
+        return;
     }
 
     async function deleteAllMemories() {
         const catLabel = memoryFilterCategory ? ` (category: ${memoryFilterCategory})` : '';
         const count = allEntries.length;
-        if (!confirm(`Delete all ${count} memory entries${catLabel}? This cannot be undone.`)) return;
+        appConfirm(`Delete all ${count} memory entries${catLabel}? This cannot be undone.`, async function() {
+            const url = memoryFilterCategory
+                ? `/api/memories?category=${encodeURIComponent(memoryFilterCategory)}`
+                : '/api/memories';
 
-        const url = memoryFilterCategory
-            ? `/api/memories?category=${encodeURIComponent(memoryFilterCategory)}`
-            : '/api/memories';
-
-        try {
-            const data = await apiFetch(url, { method: 'DELETE' });
-            showMemoryNotification(`Deleted ${data.deleted} entries.`, 'success');
-            await Promise.all([loadMemoryEntries(true), loadMemoryStats()]);
-        } catch (e) {
-            showMemoryNotification(`Bulk delete failed: ${e.message}`, 'error');
-        }
+            try {
+                const data = await apiFetch(url, { method: 'DELETE' });
+                showMemoryNotification(`Deleted ${data.deleted} entries.`, 'success');
+                await Promise.all([loadMemoryEntries(true), loadMemoryStats()]);
+            } catch (e) {
+                showMemoryNotification(`Bulk delete failed: ${e.message}`, 'error');
+            }
+        });
+        return;
     }
 
     function showMemoryNotification(message, type) {

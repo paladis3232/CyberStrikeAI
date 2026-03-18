@@ -276,15 +276,17 @@
     }
 
     async function deleteFmFile(id) {
-        if (!confirm('Delete this file entry? (File on disk will not be removed unless you check the option)')) return;
-        try {
-            await apiFetch('/api/files/' + id, { method: 'DELETE' });
-            closeFmDetailModal();
-            loadFileList(true);
-            loadFileStats();
-        } catch (e) {
-            alert('Error deleting: ' + e.message);
-        }
+        appConfirm('Delete this file entry? (File on disk will not be removed unless you check the option)', async function() {
+            try {
+                await apiFetch('/api/files/' + id, { method: 'DELETE' });
+                closeFmDetailModal();
+                loadFileList(true);
+                loadFileStats();
+            } catch (e) {
+                alert('Error deleting: ' + e.message);
+            }
+        });
+        return;
     }
 
     // Upload modal

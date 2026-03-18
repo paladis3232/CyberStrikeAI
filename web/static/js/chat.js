@@ -2197,9 +2197,10 @@ async function loadConversation(conversationId) {
 async function deleteConversation(conversationId, skipConfirm = false) {
     // Confirm deletion (if caller did not skip confirmation)
     if (!skipConfirm) {
-        if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
-            return;
-        }
+        appConfirm('Are you sure you want to delete this conversation? This action cannot be undone.', async function() {
+            await deleteConversation(conversationId, true);
+        });
+        return;
     }
 
     try {
@@ -2231,8 +2232,16 @@ async function deleteConversation(conversationId, skipConfirm = false) {
             await loadGroupConversations(currentGroupId);
         }
 
-        // Refresh conversation list
-        loadConversations();
+        // If batch manage modal is open — update it in-place so user sees the deletion immediately
+        const batchModal = document.getElementById('batch-manage-modal');
+        if (batchModal && batchModal.style.display !== 'none') {
+            allConversationsForBatch = allConversationsForBatch.filter(c => c.id !== conversationId);
+            updateBatchManageTitle(allConversationsForBatch.length);
+            renderBatchConversations();
+        }
+
+        // Refresh conversation list (groups + sidebar)
+        loadConversationsWithGroups();
     } catch (error) {
         console.error('Failed to delete conversation:', error);
         alert('Failed to delete conversation: ' + error.message);
@@ -2253,6 +2262,7 @@ function updateActiveConversation() {
 
 let attackChainCytoscape = null;
 let currentAttackChainConversationId = null;
+let currentAttackChainData = null; // raw {nodes, edges} from API — used for JSON export
 // Manage loading state per conversation ID, decoupling different conversations
 const attackChainLoadingMap = new Map(); // Map<conversationId, boolean>
 
@@ -2398,6 +2408,9 @@ async function loadAttackChain(conversationId) {
             return;
         }
         
+        // Store raw data for JSON export
+        currentAttackChainData = chainData;
+
         // Render attack chain
         renderAttackChain(chainData);
 
@@ -3456,6 +3469,7 @@ function closeAttackChainModal() {
     }
 
     currentAttackChainConversationId = null;
+    currentAttackChainData = null;
 }
 
 // Refresh attack chain (reload)
@@ -3941,6 +3955,36 @@ function exportAttackChain(format) {
                     console.error('SVG export error:', err);
                     alert('Failed to export SVG: ' + (err.message || 'Unknown error'));
                 }
+            } else if (format === 'json') {
+                try {
+                    if (!currentAttackChainData) {
+                        throw new Error('No attack chain data available');
+                    }
+                    const exportObj = {
+                        exportedAt: new Date().toISOString(),
+                        conversationId: currentAttackChainConversationId || 'unknown',
+                        nodes: currentAttackChainData.nodes || [],
+                        edges: currentAttackChainData.edges || []
+                    };
+                    const jsonStr = JSON.stringify(exportObj, null, 2);
+                    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `attack-chain-${currentAttackChainConversationId || 'export'}-${Date.now()}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(url), 100);
+                } catch (err) {
+                    console.error('JSON export error:', err);
+                    alert('Failed to export JSON: ' + (err.message || 'Unknown error'));
+                }
+            } else if (format === 'pdf') {
+                exportAttackChainAsPDF().catch(err => {
+                    console.error('PDF export error:', err);
+                    alert('Failed to export PDF: ' + (err.message || 'Unknown error'));
+                });
             } else {
                 alert('Unsupported export format: ' + format);
             }
@@ -3952,6 +3996,378 @@ function exportAttackChain(format) {
 }
 
 // ============================================
+// Attack Chain — PDF Export
+// ============================================
+async function exportAttackChainAsPDF() {
+    if (!currentAttackChainData || !attackChainCytoscape) {
+        throw new Error('No attack chain data available. Please load the attack chain first.');
+    }
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+        throw new Error('PDF library not loaded. Please check your internet connection and reload the page.');
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const pageW  = doc.internal.pageSize.getWidth();
+    const pageH  = doc.internal.pageSize.getHeight();
+    const margin = 14;
+    const cw     = pageW - margin * 2; // content width
+    let y = margin;
+
+    // ── colour helpers ──────────────────────────────────────────────────────
+    const C = {
+        headerBg:   [13,  71,  161],
+        primary:    [25,  118, 210],
+        danger:     [198, 40,  40 ],
+        warning:    [230, 81,  0  ],
+        caution:    [245, 127, 23 ],
+        success:    [46,  125, 50 ],
+        dark:       [33,  33,  33 ],
+        mid:        [97,  97,  97 ],
+        light:      [245, 245, 245],
+        border:     [210, 210, 210],
+        white:      [255, 255, 255],
+    };
+    const fill  = (c) => doc.setFillColor(c[0], c[1], c[2]);
+    const ink   = (c) => doc.setTextColor(c[0], c[1], c[2]);
+    const pen   = (c) => doc.setDrawColor(c[0], c[1], c[2]);
+
+    // ── risk colour lookup ───────────────────────────────────────────────────
+    function riskColor(score) {
+        if (score >= 80) return C.danger;
+        if (score >= 60) return C.warning;
+        if (score >= 40) return C.caution;
+        return C.success;
+    }
+    function riskLabel(score) {
+        if (score >= 80) return 'Critical';
+        if (score >= 60) return 'High';
+        if (score >= 40) return 'Medium';
+        return 'Low';
+    }
+
+    // ── shared date string ───────────────────────────────────────────────────
+    const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PAGE HEADER (repeated via footer loop later)
+    // ═══════════════════════════════════════════════════════════════════════
+    function drawPageHeader() {
+        fill(C.headerBg);
+        doc.rect(0, 0, pageW, 26, 'F');
+
+        // Logo
+        if (exportAttackChainAsPDF._logoDataUrl) {
+            doc.addImage(exportAttackChainAsPDF._logoDataUrl, 'PNG', margin, 3, 20, 20);
+        }
+
+        // Title
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(15);
+        ink(C.white);
+        doc.text('Attack Chain Report', margin + 24, 14);
+
+        // Subtitle
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text('CyberStrike AI  •  Automated Penetration Testing Platform', margin + 24, 20);
+
+        // Date (right-aligned)
+        doc.text(dateStr, pageW - margin, 20, { align: 'right' });
+    }
+
+    // ── pre-load logo (non-fatal) ─────────────────────────────────────────
+    try {
+        if (!exportAttackChainAsPDF._logoDataUrl) {
+            const resp = await fetch('/static/cybersec.png');
+            if (resp.ok) {
+                const blob = await resp.blob();
+                exportAttackChainAsPDF._logoDataUrl = await new Promise(res => {
+                    const reader = new FileReader();
+                    reader.onload = e => res(e.target.result);
+                    reader.readAsDataURL(blob);
+                });
+            }
+        }
+    } catch (_) { /* logo is decorative — continue without it */ }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PAGE 1 — HEADER + SUMMARY + GRAPH IMAGE
+    // ═══════════════════════════════════════════════════════════════════════
+    drawPageHeader();
+    y = 34;
+
+    // ── data prep ────────────────────────────────────────────────────────
+    const nodes      = currentAttackChainData.nodes || [];
+    const edges      = currentAttackChainData.edges  || [];
+    const vulnNodes  = nodes.filter(n => n.type === 'vulnerability');
+    const targNodes  = nodes.filter(n => n.type === 'target');
+    const actNodes   = nodes.filter(n => n.type === 'action');
+    const highRisk   = vulnNodes.filter(n => (n.risk_score || 0) >= 80).length;
+    const medRisk    = vulnNodes.filter(n => (n.risk_score || 0) >= 60 && (n.risk_score || 0) < 80).length;
+    const lowRisk    = vulnNodes.filter(n => (n.risk_score || 0) < 60).length;
+
+    // ── section label helper ─────────────────────────────────────────────
+    function sectionTitle(text) {
+        // thin accent bar
+        fill(C.primary);
+        doc.rect(margin, y, 3, 5.5, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        ink(C.dark);
+        doc.text(text, margin + 5, y + 4.5);
+        y += 8;
+    }
+
+    // ── summary cards ────────────────────────────────────────────────────
+    sectionTitle('Summary');
+
+    const cards = [
+        { label: 'Total Nodes',      value: nodes.length,      color: C.primary  },
+        { label: 'Connections',      value: edges.length,       color: C.mid      },
+        { label: 'Targets',          value: targNodes.length,   color: C.primary  },
+        { label: 'Vulnerabilities',  value: vulnNodes.length,   color: C.danger   },
+        { label: 'Critical / High',  value: highRisk,           color: C.danger   },
+        { label: 'Medium',           value: medRisk,            color: C.warning  },
+        { label: 'Low / Info',       value: lowRisk,            color: C.success  },
+    ];
+
+    const cardH  = 20;
+    const cardW  = cw / cards.length;
+
+    // card background row
+    fill(C.light);
+    pen(C.border);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, y, cw, cardH, 2, 2, 'FD');
+
+    cards.forEach((card, i) => {
+        const cx = margin + i * cardW + cardW / 2;
+        // vertical divider (except first)
+        if (i > 0) {
+            pen(C.border);
+            doc.setLineWidth(0.2);
+            doc.line(margin + i * cardW, y + 3, margin + i * cardW, y + cardH - 3);
+        }
+        // big number
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        ink(card.color);
+        doc.text(String(card.value), cx, y + 11, { align: 'center' });
+        // small label
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        ink(C.mid);
+        doc.text(card.label, cx, y + 17, { align: 'center' });
+    });
+
+    y += cardH + 8;
+
+    // ── conversation metadata line ────────────────────────────────────────
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    ink(C.mid);
+    doc.text(`Conversation ID: ${currentAttackChainConversationId || 'N/A'}`, margin, y);
+    y += 6;
+
+    // ── graph image ───────────────────────────────────────────────────────
+    sectionTitle('Attack Chain Graph');
+
+    let graphPng = null;
+    try {
+        const result = attackChainCytoscape.png({ output: 'base64uri', bg: '#ffffff', full: true, scale: 2 });
+        graphPng = (result && typeof result.then === 'function') ? await result : result;
+    } catch (_) { /* continue without graph image */ }
+
+    if (graphPng) {
+        const imgProps = doc.getImageProperties(graphPng);
+        const ratio    = imgProps.width / imgProps.height;
+        const imgW     = cw;
+        const imgH     = Math.min(imgW / ratio, 88);
+
+        pen(C.border);
+        doc.setLineWidth(0.3);
+        doc.rect(margin, y, imgW, imgH);
+        doc.addImage(graphPng, 'PNG', margin, y, imgW, imgH);
+        y += imgH + 4;
+
+        // caption
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(7);
+        ink(C.mid);
+        doc.text(`Figure 1. Attack chain graph — ${nodes.length} nodes, ${edges.length} edges`, margin, y);
+        y += 7;
+    } else {
+        ink(C.mid);
+        doc.setFontSize(8);
+        doc.text('(Graph image unavailable)', margin, y);
+        y += 8;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // VULNERABILITIES TABLE
+    // ═══════════════════════════════════════════════════════════════════════
+    if (vulnNodes.length > 0) {
+        if (y > pageH - 55) { doc.addPage(); drawPageHeader(); y = 34; }
+
+        sectionTitle('Vulnerabilities');
+
+        const vulnRows = vulnNodes
+            .slice()
+            .sort((a, b) => (b.risk_score || 0) - (a.risk_score || 0))
+            .map(n => {
+                const score = n.risk_score || 0;
+                const meta  = n.metadata || {};
+                const detail = meta.description || meta.cve || meta.detail || meta.info || '—';
+                return [n.label || n.id, riskLabel(score), score, detail];
+            });
+
+        doc.autoTable({
+            startY: y,
+            margin: { left: margin, right: margin },
+            head: [['Vulnerability', 'Risk Level', 'Score', 'Details']],
+            body: vulnRows,
+            styles: {
+                fontSize: 8,
+                cellPadding: 2.8,
+                overflow: 'linebreak',
+                font: 'helvetica',
+                textColor: [33, 33, 33],
+            },
+            headStyles: {
+                fillColor: C.headerBg,
+                textColor: C.white,
+                fontStyle: 'bold',
+                fontSize: 8.5,
+            },
+            columnStyles: {
+                0: { cellWidth: 58 },
+                1: { cellWidth: 24, halign: 'center', fontStyle: 'bold' },
+                2: { cellWidth: 18, halign: 'center' },
+                3: { cellWidth: 'auto' },
+            },
+            alternateRowStyles: { fillColor: [250, 250, 250] },
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.column.index === 1) {
+                    const score = vulnRows[data.row.index]?.[2] || 0;
+                    const c = riskColor(score);
+                    data.cell.styles.textColor = c;
+                }
+            },
+        });
+        y = doc.lastAutoTable.finalY + 8;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ALL NODES TABLE
+    // ═══════════════════════════════════════════════════════════════════════
+    if (nodes.length > 0) {
+        if (y > pageH - 55) { doc.addPage(); drawPageHeader(); y = 34; }
+
+        sectionTitle('All Nodes');
+
+        const nodeTypeColor = { target: C.primary, vulnerability: C.danger, action: C.warning };
+
+        const nodeRows = nodes.map(n => [
+            n.label || n.id,
+            n.type || '—',
+            n.risk_score != null ? n.risk_score : '—',
+        ]);
+
+        doc.autoTable({
+            startY: y,
+            margin: { left: margin, right: margin },
+            head: [['Label', 'Type', 'Risk Score']],
+            body: nodeRows,
+            styles: { fontSize: 8, cellPadding: 2.8, font: 'helvetica', textColor: [33, 33, 33] },
+            headStyles: { fillColor: [38, 50, 56], textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
+            columnStyles: {
+                0: { cellWidth: 'auto' },
+                1: { cellWidth: 32, halign: 'center', fontStyle: 'bold' },
+                2: { cellWidth: 26, halign: 'center' },
+            },
+            alternateRowStyles: { fillColor: [250, 250, 250] },
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.column.index === 1) {
+                    const type = nodeRows[data.row.index]?.[1];
+                    data.cell.styles.textColor = nodeTypeColor[type] || C.mid;
+                }
+            },
+        });
+        y = doc.lastAutoTable.finalY + 8;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONNECTIONS TABLE
+    // ═══════════════════════════════════════════════════════════════════════
+    if (edges.length > 0) {
+        if (y > pageH - 55) { doc.addPage(); drawPageHeader(); y = 34; }
+
+        sectionTitle('Connections');
+
+        const nodeMap = {};
+        nodes.forEach(n => { nodeMap[n.id] = n.label || n.id; });
+
+        const edgeTypeColor = {
+            discovers: C.primary,
+            targets:   C.primary,
+            enables:   C.danger,
+            leads_to:  C.mid,
+        };
+
+        const edgeRows = edges.map(e => [
+            nodeMap[e.source] || e.source,
+            e.type || '→',
+            nodeMap[e.target] || e.target,
+            e.weight != null ? e.weight : '—',
+        ]);
+
+        doc.autoTable({
+            startY: y,
+            margin: { left: margin, right: margin },
+            head: [['Source Node', 'Relation', 'Target Node', 'Weight']],
+            body: edgeRows,
+            styles: { fontSize: 8, cellPadding: 2.8, font: 'helvetica', textColor: [33, 33, 33] },
+            headStyles: { fillColor: [38, 50, 56], textColor: C.white, fontStyle: 'bold', fontSize: 8.5 },
+            columnStyles: {
+                0: { cellWidth: 'auto' },
+                1: { cellWidth: 30, halign: 'center', fontStyle: 'bold' },
+                2: { cellWidth: 'auto' },
+                3: { cellWidth: 22, halign: 'center' },
+            },
+            alternateRowStyles: { fillColor: [250, 250, 250] },
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.column.index === 1) {
+                    const type = edgeRows[data.row.index]?.[1];
+                    data.cell.styles.textColor = edgeTypeColor[type] || C.mid;
+                }
+            },
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FOOTER — every page
+    // ═══════════════════════════════════════════════════════════════════════
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        pen(C.border);
+        doc.setLineWidth(0.3);
+        doc.line(margin, pageH - 10, pageW - margin, pageH - 10);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        ink(C.mid);
+        doc.text('CyberStrike AI — Confidential', margin, pageH - 6);
+        doc.text(dateStr, pageW / 2, pageH - 6, { align: 'center' });
+        doc.text(`Page ${p} / ${totalPages}`, pageW - margin, pageH - 6, { align: 'right' });
+    }
+
+    // ── save ──────────────────────────────────────────────────────────────
+    doc.save(`attack-chain-${currentAttackChainConversationId || 'export'}-${Date.now()}.pdf`);
+}
+
+// ============================================
 // Conversation grouping and batch management
 // ============================================
 
@@ -3960,6 +4376,8 @@ let currentGroupId = null; // Currently viewed group detail page
 let currentConversationGroupId = null; // Group ID of the current conversation (for highlight)
 let contextMenuConversationId = null;
 let contextMenuGroupId = null;
+let _contextCloseMenuHandler = null; // track active outside-click listener for conv context menu
+let _groupCloseMenuHandler = null;   // track active outside-click listener for group context menu
 let groupsCache = [];
 let conversationGroupMappingCache = {};
 let pendingGroupMappings = {}; // Pending group mappings (for handling backend API delay)
@@ -4415,6 +4833,12 @@ async function showConversationContextMenu(event) {
         submenu.style.marginRight = '0';
     }
 
+    // Remove any stale outside-click listener before registering a new one
+    if (_contextCloseMenuHandler) {
+        document.removeEventListener('click', _contextCloseMenuHandler);
+        _contextCloseMenuHandler = null;
+    }
+
     // Close menu on outside click
     const closeMenu = (e) => {
         // Check whether the click is inside the main menu or submenu
@@ -4424,10 +4848,10 @@ async function showConversationContextMenu(event) {
 
         if (!clickedInMenu && !clickedInSubmenu) {
             // Use closeContextMenu to close both the main menu and the submenu
-            closeContextMenu();
-            document.removeEventListener('click', closeMenu);
+            closeContextMenu(); // also clears _contextCloseMenuHandler
         }
     };
+    _contextCloseMenuHandler = closeMenu;
     setTimeout(() => {
         document.addEventListener('click', closeMenu);
     }, 0);
@@ -4513,71 +4937,63 @@ async function showGroupContextMenu(event, groupId) {
     menu.style.left = left + 'px';
     menu.style.top = top + 'px';
 
+    // Remove any stale outside-click listener before registering a new one
+    if (_groupCloseMenuHandler) {
+        document.removeEventListener('click', _groupCloseMenuHandler);
+        _groupCloseMenuHandler = null;
+    }
+
     // Close menu on outside click
     const closeMenu = (e) => {
         if (!menu.contains(e.target)) {
             menu.style.display = 'none';
             document.removeEventListener('click', closeMenu);
+            _groupCloseMenuHandler = null;
         }
     };
+    _groupCloseMenuHandler = closeMenu;
     setTimeout(() => {
         document.addEventListener('click', closeMenu);
     }, 0);
 }
 
 // Rename conversation
-async function renameConversation() {
+function renameConversation() {
     const convId = contextMenuConversationId;
     if (!convId) return;
-
-    const newTitle = prompt(typeof window.t === 'function' ? window.t('chat.enterNewTitle') : 'Enter new title:', '');
-    if (newTitle === null || !newTitle.trim()) {
-        closeContextMenu();
-        return;
-    }
-
-    try {
-        const response = await apiFetch(`/api/conversations/${convId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ title: newTitle.trim() }),
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Update failed');
-        }
-
-        // Update the frontend display
-        const item = document.querySelector(`[data-conversation-id="${convId}"]`);
-        if (item) {
-            const titleEl = item.querySelector('.conversation-title');
-            if (titleEl) {
-                titleEl.textContent = newTitle.trim();
-            }
-        }
-
-        // Also update if in group detail view
-        const groupItem = document.querySelector(`.group-conversation-item[data-conversation-id="${convId}"]`);
-        if (groupItem) {
-            const groupTitleEl = groupItem.querySelector('.group-conversation-title');
-            if (groupTitleEl) {
-                groupTitleEl.textContent = newTitle.trim();
-            }
-        }
-
-        // Reload the conversation list
-        loadConversationsWithGroups();
-    } catch (error) {
-        console.error('Failed to rename conversation:', error);
-        const failedLabel = typeof window.t === 'function' ? window.t('chat.renameFailed') : 'Rename failed';
-        const unknownErr = typeof window.t === 'function' ? window.t('createGroupModal.unknownError') : 'Unknown error';
-        alert(failedLabel + ': ' + (error.message || unknownErr));
-    }
-
     closeContextMenu();
+
+    const titlePrompt = typeof window.t === 'function' ? window.t('chat.enterNewTitle') : 'Enter new title:';
+    appPrompt(titlePrompt, '', async function(newTitle) {
+        if (!newTitle || !newTitle.trim()) return;
+        try {
+            const response = await apiFetch(`/api/conversations/${convId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: newTitle.trim() }),
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Update failed');
+            }
+            const item = document.querySelector(`[data-conversation-id="${convId}"]`);
+            if (item) {
+                const titleEl = item.querySelector('.conversation-title');
+                if (titleEl) { titleEl.textContent = newTitle.trim(); }
+            }
+            const groupItem = document.querySelector(`.group-conversation-item[data-conversation-id="${convId}"]`);
+            if (groupItem) {
+                const groupTitleEl = groupItem.querySelector('.group-conversation-title');
+                if (groupTitleEl) { groupTitleEl.textContent = newTitle.trim(); }
+            }
+            loadConversationsWithGroups();
+        } catch (error) {
+            console.error('Failed to rename conversation:', error);
+            const failedLabel = typeof window.t === 'function' ? window.t('chat.renameFailed') : 'Rename failed';
+            const unknownErr = typeof window.t === 'function' ? window.t('createGroupModal.unknownError') : 'Unknown error';
+            alert(failedLabel + ': ' + (error.message || unknownErr));
+        }
+    });
 }
 
 // Pin/unpin conversation
@@ -5049,16 +5465,20 @@ function showAttackChainFromContext() {
 function deleteConversationFromContext() {
     const convId = contextMenuConversationId;
     if (!convId) return;
-
+    closeContextMenu(); // close menu first so it doesn't interfere with the dialog
     const confirmMsg = typeof window.t === 'function' ? window.t('chat.deleteConversationConfirm') : 'Are you sure you want to delete this conversation?';
-    if (confirm(confirmMsg)) {
+    appConfirm(confirmMsg, function() {
         deleteConversation(convId, true); // Skip internal confirmation since we already confirmed here
-    }
-    closeContextMenu();
+    });
 }
 
 // Close the context menu
 function closeContextMenu() {
+    // Remove stale outside-click listener to prevent accumulation
+    if (_contextCloseMenuHandler) {
+        document.removeEventListener('click', _contextCloseMenuHandler);
+        _contextCloseMenuHandler = null;
+    }
     const menu = document.getElementById('conversation-context-menu');
     if (menu) {
         menu.style.display = 'none';
@@ -5081,7 +5501,12 @@ let allConversationsForBatch = [];
 // Update batch management modal title (with count), supports i18n; count is the current number
 function updateBatchManageTitle(count) {
     const titleEl = document.getElementById('batch-manage-title');
-    if (!titleEl || typeof window.t !== 'function') return;
+    if (!titleEl) return;
+    // Always update the count span directly so it stays correct even without i18n
+    const countEl = document.getElementById('batch-manage-count');
+    if (countEl) countEl.textContent = count || 0;
+    // Update the full title text if i18n is available
+    if (typeof window.t !== 'function') return;
     const template = window.t('batchManageModal.title', { count: '__C__' });
     const parts = template.split('__C__');
     titleEl.innerHTML = (parts[0] || '') + '<span id="batch-manage-count">' + (count || 0) + '</span>' + (parts[1] || '');
@@ -5248,24 +5673,23 @@ async function deleteSelectedConversations() {
     }
 
     const confirmMsg = typeof window.t === 'function' ? window.t('batchManageModal.confirmDeleteN', { count: checkboxes.length }) : 'Are you sure you want to delete the selected ' + checkboxes.length + ' conversation(s)?';
-    if (!confirm(confirmMsg)) {
-        return;
-    }
+    appConfirm(confirmMsg, async function() {
+        const ids = Array.from(checkboxes).map(cb => cb.dataset.conversationId);
 
-    const ids = Array.from(checkboxes).map(cb => cb.dataset.conversationId);
-
-    try {
-        for (const id of ids) {
-            await deleteConversation(id, true); // Skip internal confirmation since batch delete was already confirmed
+        try {
+            for (const id of ids) {
+                await deleteConversation(id, true); // Skip internal confirmation since batch delete was already confirmed
+            }
+            closeBatchManageModal();
+            loadConversationsWithGroups();
+        } catch (error) {
+            console.error('Delete failed:', error);
+            const failedMsg = typeof window.t === 'function' ? window.t('batchManageModal.deleteFailed') : 'Delete failed';
+            const unknownErr = typeof window.t === 'function' ? window.t('createGroupModal.unknownError') : 'Unknown error';
+            alert(failedMsg + ': ' + (error.message || unknownErr));
         }
-        closeBatchManageModal();
-        loadConversationsWithGroups();
-    } catch (error) {
-        console.error('Delete failed:', error);
-        const failedMsg = typeof window.t === 'function' ? window.t('batchManageModal.deleteFailed') : 'Delete failed';
-        const unknownErr = typeof window.t === 'function' ? window.t('createGroupModal.unknownError') : 'Unknown error';
-        alert(failedMsg + ': ' + (error.message || unknownErr));
-    }
+    });
+    return;
 }
 
 // Close the batch management modal
@@ -5825,57 +6249,44 @@ async function editGroup() {
         if (!group) return;
 
         const renamePrompt = typeof window.t === 'function' ? window.t('chat.renameGroupPrompt') : 'Enter new name:';
-        const newName = prompt(renamePrompt, group.name);
-        if (newName === null || !newName.trim()) return;
-
-        const trimmedName = newName.trim();
-
-        // Frontend validation: check if the name already exists (excluding the current group)
-        let groups;
-        if (Array.isArray(groupsCache) && groupsCache.length > 0) {
-            groups = groupsCache;
-        } else {
-            const response = await apiFetch('/api/groups');
-            groups = await response.json();
-        }
-
-        // Ensure groups is a valid array
-        if (!Array.isArray(groups)) {
-            groups = [];
-        }
-
-        const nameExists = groups.some(g => g.name === trimmedName && g.id !== currentGroupId);
-        if (nameExists) {
-            alert(typeof window.t === 'function' ? window.t('createGroupModal.nameExists') : 'Group name already exists, please use a different name');
-            return;
-        }
-
-        const updateResponse = await apiFetch(`/api/groups/${currentGroupId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                name: trimmedName,
-                icon: group.icon || '📁',
-            }),
-        });
-
-        if (!updateResponse.ok) {
-            const error = await updateResponse.json();
-            if (error.error && (error.error.includes('already exists'))) {
-                alert(typeof window.t === 'function' ? window.t('createGroupModal.nameExists') : 'Group name already exists, please use a different name');
-                return;
+        appPrompt(renamePrompt, group.name, async function(newName) {
+            if (!newName || !newName.trim()) return;
+            try {
+                const trimmedName = newName.trim();
+                let groups;
+                if (Array.isArray(groupsCache) && groupsCache.length > 0) {
+                    groups = groupsCache;
+                } else {
+                    const r = await apiFetch('/api/groups');
+                    groups = await r.json();
+                }
+                if (!Array.isArray(groups)) { groups = []; }
+                const nameExists = groups.some(g => g.name === trimmedName && g.id !== currentGroupId);
+                if (nameExists) {
+                    alert(typeof window.t === 'function' ? window.t('createGroupModal.nameExists') : 'Group name already exists, please use a different name');
+                    return;
+                }
+                const updateResponse = await apiFetch(`/api/groups/${currentGroupId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: trimmedName, icon: group.icon || '📁' }),
+                });
+                if (!updateResponse.ok) {
+                    const error = await updateResponse.json();
+                    if (error.error && error.error.includes('already exists')) {
+                        alert(typeof window.t === 'function' ? window.t('createGroupModal.nameExists') : 'Group name already exists, please use a different name');
+                        return;
+                    }
+                    throw new Error(error.error || 'Update failed');
+                }
+                loadGroups();
+                const titleEl = document.getElementById('group-detail-title');
+                if (titleEl) { titleEl.textContent = trimmedName; }
+            } catch (error) {
+                console.error('Failed to edit group:', error);
+                alert((typeof window.t === 'function' ? window.t('chat.editFailed') : 'Edit failed') + ': ' + (error.message || (typeof window.t === 'function' ? window.t('createGroupModal.unknownError') : 'Unknown error')));
             }
-            throw new Error(error.error || 'Update failed');
-        }
-
-        loadGroups();
-
-        const titleEl = document.getElementById('group-detail-title');
-        if (titleEl) {
-            titleEl.textContent = trimmedName;
-        }
+        });
     } catch (error) {
         console.error('Failed to edit group:', error);
         alert((typeof window.t === 'function' ? window.t('chat.editFailed') : 'Edit failed') + ': ' + (error.message || (typeof window.t === 'function' ? window.t('createGroupModal.unknownError') : 'Unknown error')));
@@ -5887,46 +6298,46 @@ async function deleteGroup() {
     if (!currentGroupId) return;
 
     const deleteConfirmMsg = typeof window.t === 'function' ? window.t('chat.deleteGroupConfirm') : 'Are you sure you want to delete this group? Conversations in the group will not be deleted but will be removed from the group.';
-    if (!confirm(deleteConfirmMsg)) {
-        return;
-    }
+    appConfirm(deleteConfirmMsg, async function() {
+        try {
+            await apiFetch(`/api/groups/${currentGroupId}`, {
+                method: 'DELETE',
+            });
 
-    try {
-        await apiFetch(`/api/groups/${currentGroupId}`, {
-            method: 'DELETE',
-        });
+            // Update cache
+            groupsCache = groupsCache.filter(g => g.id !== currentGroupId);
+            Object.keys(conversationGroupMappingCache).forEach(convId => {
+                if (conversationGroupMappingCache[convId] === currentGroupId) {
+                    delete conversationGroupMappingCache[convId];
+                }
+            });
 
-        // Update cache
-        groupsCache = groupsCache.filter(g => g.id !== currentGroupId);
-        Object.keys(conversationGroupMappingCache).forEach(convId => {
-            if (conversationGroupMappingCache[convId] === currentGroupId) {
-                delete conversationGroupMappingCache[convId];
+            // If the "Move to Group" submenu is open, refresh it
+            const submenu = document.getElementById('move-to-group-submenu');
+            if (submenu && submenu.style.display !== 'none') {
+                // Submenu is open — reload group list and refresh the submenu
+                await loadGroups();
+                await showMoveToGroupSubmenu();
+            } else {
+                exitGroupDetail();
+                await loadGroups();
             }
-        });
 
-        // If the "Move to Group" submenu is open, refresh it
-        const submenu = document.getElementById('move-to-group-submenu');
-        if (submenu && submenu.style.display !== 'none') {
-            // Submenu is open — reload group list and refresh the submenu
-            await loadGroups();
-            await showMoveToGroupSubmenu();
-        } else {
-            exitGroupDetail();
-            await loadGroups();
+            // Refresh conversation list to immediately show previously grouped conversations
+            await loadConversationsWithGroups();
+        } catch (error) {
+            console.error('Failed to delete group:', error);
+            alert((typeof window.t === 'function' ? window.t('chat.deleteFailed') : 'Delete failed') + ': ' + (error.message || (typeof window.t === 'function' ? window.t('createGroupModal.unknownError') : 'Unknown error')));
         }
-
-        // Refresh conversation list to immediately show previously grouped conversations
-        await loadConversationsWithGroups();
-    } catch (error) {
-        console.error('Failed to delete group:', error);
-        alert((typeof window.t === 'function' ? window.t('chat.deleteFailed') : 'Delete failed') + ': ' + (error.message || (typeof window.t === 'function' ? window.t('createGroupModal.unknownError') : 'Unknown error')));
-    }
+    });
+    return;
 }
 
 // Rename group from context menu
 async function renameGroupFromContext() {
     const groupId = contextMenuGroupId;
     if (!groupId) return;
+    closeGroupContextMenu();
 
     try {
         const response = await apiFetch(`/api/groups/${groupId}`);
@@ -5934,71 +6345,54 @@ async function renameGroupFromContext() {
         if (!group) return;
 
         const renamePrompt = typeof window.t === 'function' ? window.t('chat.renameGroupPrompt') : 'Enter new name:';
-        const newName = prompt(renamePrompt, group.name);
-        if (newName === null || !newName.trim()) {
-            closeGroupContextMenu();
-            return;
-        }
-
-        const trimmedName = newName.trim();
-
-        // Frontend validation: check if the name already exists (excluding the current group)
-        let groups;
-        if (Array.isArray(groupsCache) && groupsCache.length > 0) {
-            groups = groupsCache;
-        } else {
-            const response = await apiFetch('/api/groups');
-            groups = await response.json();
-        }
-
-        // Ensure groups is a valid array
-        if (!Array.isArray(groups)) {
-            groups = [];
-        }
-
-        const nameExists = groups.some(g => g.name === trimmedName && g.id !== groupId);
-        if (nameExists) {
-            alert(typeof window.t === 'function' ? window.t('createGroupModal.nameExists') : 'Group name already exists, please use a different name');
-            return;
-        }
-
-        const updateResponse = await apiFetch(`/api/groups/${groupId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                name: trimmedName,
-                icon: group.icon || '📁',
-            }),
+        appPrompt(renamePrompt, group.name, async function(newName) {
+            if (!newName || !newName.trim()) return;
+            try {
+                const trimmedName = newName.trim();
+                let groups;
+                if (Array.isArray(groupsCache) && groupsCache.length > 0) {
+                    groups = groupsCache;
+                } else {
+                    const r = await apiFetch('/api/groups');
+                    groups = await r.json();
+                }
+                if (!Array.isArray(groups)) { groups = []; }
+                const nameExists = groups.some(g => g.name === trimmedName && g.id !== groupId);
+                if (nameExists) {
+                    alert(typeof window.t === 'function' ? window.t('createGroupModal.nameExists') : 'Group name already exists, please use a different name');
+                    return;
+                }
+                const updateResponse = await apiFetch(`/api/groups/${groupId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: trimmedName, icon: group.icon || '📁' }),
+                });
+                if (!updateResponse.ok) {
+                    const error = await updateResponse.json();
+                    if (error.error && error.error.includes('already exists')) {
+                        alert(typeof window.t === 'function' ? window.t('createGroupModal.nameExists') : 'Group name already exists, please use a different name');
+                        return;
+                    }
+                    throw new Error(error.error || 'Update failed');
+                }
+                loadGroups();
+                if (currentGroupId === groupId) {
+                    const titleEl = document.getElementById('group-detail-title');
+                    if (titleEl) { titleEl.textContent = trimmedName; }
+                }
+            } catch (error) {
+                console.error('Failed to rename group:', error);
+                const failedLabel = typeof window.t === 'function' ? window.t('chat.renameFailed') : 'Rename failed';
+                const unknownErr = typeof window.t === 'function' ? window.t('createGroupModal.unknownError') : 'Unknown error';
+                alert(failedLabel + ': ' + (error.message || unknownErr));
+            }
         });
-
-        if (!updateResponse.ok) {
-            const error = await updateResponse.json();
-            if (error.error && (error.error.includes('already exists'))) {
-                alert(typeof window.t === 'function' ? window.t('createGroupModal.nameExists') : 'Group name already exists, please use a different name');
-                return;
-            }
-            throw new Error(error.error || 'Update failed');
-        }
-
-        loadGroups();
-
-        // If currently in group detail view, update the title
-        if (currentGroupId === groupId) {
-            const titleEl = document.getElementById('group-detail-title');
-            if (titleEl) {
-                titleEl.textContent = trimmedName;
-            }
-        }
     } catch (error) {
         console.error('Failed to rename group:', error);
         const failedLabel = typeof window.t === 'function' ? window.t('chat.renameFailed') : 'Rename failed';
         const unknownErr = typeof window.t === 'function' ? window.t('createGroupModal.unknownError') : 'Unknown error';
         alert(failedLabel + ': ' + (error.message || unknownErr));
     }
-
-    closeGroupContextMenu();
 }
 
 // Pin/unpin group from context menu
@@ -6046,46 +6440,44 @@ async function deleteGroupFromContext() {
     if (!groupId) return;
 
     const deleteConfirmMsg = typeof window.t === 'function' ? window.t('chat.deleteGroupConfirm') : 'Are you sure you want to delete this group? Conversations in the group will not be deleted but will be removed from the group.';
-    if (!confirm(deleteConfirmMsg)) {
-        closeGroupContextMenu();
-        return;
-    }
+    appConfirm(deleteConfirmMsg, async function() {
+        try {
+            await apiFetch(`/api/groups/${groupId}`, {
+                method: 'DELETE',
+            });
 
-    try {
-        await apiFetch(`/api/groups/${groupId}`, {
-            method: 'DELETE',
-        });
+            // Update cache
+            groupsCache = groupsCache.filter(g => g.id !== groupId);
+            Object.keys(conversationGroupMappingCache).forEach(convId => {
+                if (conversationGroupMappingCache[convId] === groupId) {
+                    delete conversationGroupMappingCache[convId];
+                }
+            });
 
-        // Update cache
-        groupsCache = groupsCache.filter(g => g.id !== groupId);
-        Object.keys(conversationGroupMappingCache).forEach(convId => {
-            if (conversationGroupMappingCache[convId] === groupId) {
-                delete conversationGroupMappingCache[convId];
+            // If the "Move to Group" submenu is open, refresh it
+            const submenu = document.getElementById('move-to-group-submenu');
+            if (submenu && submenu.style.display !== 'none') {
+                // Submenu is open — reload group list and refresh the submenu
+                await loadGroups();
+                await showMoveToGroupSubmenu();
+            } else {
+                // If currently in group detail view, exit it
+                if (currentGroupId === groupId) {
+                    exitGroupDetail();
+                }
+                await loadGroups();
             }
-        });
 
-        // If the "Move to Group" submenu is open, refresh it
-        const submenu = document.getElementById('move-to-group-submenu');
-        if (submenu && submenu.style.display !== 'none') {
-            // Submenu is open — reload group list and refresh the submenu
-            await loadGroups();
-            await showMoveToGroupSubmenu();
-        } else {
-            // If currently in group detail view, exit it
-            if (currentGroupId === groupId) {
-                exitGroupDetail();
-            }
-            await loadGroups();
+            // Refresh conversation list to immediately show previously grouped conversations
+            await loadConversationsWithGroups();
+        } catch (error) {
+            console.error('Failed to delete group:', error);
+            alert((typeof window.t === 'function' ? window.t('chat.deleteFailed') : 'Delete failed') + ': ' + (error.message || (typeof window.t === 'function' ? window.t('createGroupModal.unknownError') : 'Unknown error')));
         }
 
-        // Refresh conversation list to immediately show previously grouped conversations
-        await loadConversationsWithGroups();
-    } catch (error) {
-        console.error('Failed to delete group:', error);
-        alert((typeof window.t === 'function' ? window.t('chat.deleteFailed') : 'Delete failed') + ': ' + (error.message || (typeof window.t === 'function' ? window.t('createGroupModal.unknownError') : 'Unknown error')));
-    }
-
-    closeGroupContextMenu();
+        closeGroupContextMenu();
+    });
+    return;
 }
 
 // Close group context menu
@@ -6201,33 +6593,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     await loadConversationsWithGroups();
 
-    // Auto-refresh conversation list when the page gains focus.
-    // This ensures new conversations created via OpenAPI are visible when the user returns to the page.
-    let lastFocusTime = Date.now();
-    const CONVERSATION_REFRESH_INTERVAL = 30000; // Refresh at most once every 30 seconds to avoid excessive calls
+    // ── Auto-refresh conversation list ──────────────────────────────────────
+    // Polls every 8 seconds so Telegram-bot-created conversations appear quickly.
+    // Debounced: skips if a manual refresh just happened within the last 4 seconds.
+    let lastConvRefresh = Date.now();
+    const CONV_POLL_MS = 8000;   // periodic poll interval
+    const CONV_DEBOUNCE_MS = 4000; // minimum gap between any two refreshes
 
-    window.addEventListener('focus', () => {
+    function silentRefreshConversations() {
         const now = Date.now();
-        // Only refresh if more than 30 seconds have passed since the last refresh
-        if (now - lastFocusTime > CONVERSATION_REFRESH_INTERVAL) {
-            lastFocusTime = now;
-            if (typeof loadConversationsWithGroups === 'function') {
-                loadConversationsWithGroups();
-            }
+        if (now - lastConvRefresh < CONV_DEBOUNCE_MS) return;
+        lastConvRefresh = now;
+        if (typeof loadConversationsWithGroups === 'function') {
+            loadConversationsWithGroups();
         }
-    });
+    }
 
-    // Listen for page visibility changes (when the user switches back to this tab)
-    document.addEventListener('visibilitychange', () => {
+    // Periodic poll (only while tab is visible to avoid waking sleeping tabs)
+    setInterval(function () {
         if (!document.hidden) {
-            // When the page becomes visible, check whether a refresh is needed
-            const now = Date.now();
-            if (now - lastFocusTime > CONVERSATION_REFRESH_INTERVAL) {
-                lastFocusTime = now;
-                if (typeof loadConversationsWithGroups === 'function') {
-                    loadConversationsWithGroups();
-                }
-            }
+            silentRefreshConversations();
         }
+    }, CONV_POLL_MS);
+
+    // Immediate refresh when user switches back to tab / window
+    window.addEventListener('focus', silentRefreshConversations);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) { silentRefreshConversations(); }
     });
 });

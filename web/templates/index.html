@@ -143,6 +143,15 @@
                             <span>Vulnerability Management</span>
                         </div>
                     </div>
+                    <div class="nav-item" data-page="webshell">
+                        <div class="nav-item-content" data-title="WebShell Management" onclick="switchPage('webshell')">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="4 17 10 11 4 5"></polyline>
+                                <line x1="12" y1="19" x2="20" y2="19"></line>
+                            </svg>
+                            <span>WebShell Management</span>
+                        </div>
+                    </div>
                     <div class="nav-item nav-item-has-submenu" data-page="mcp">
                         <div class="nav-item-content" data-title="MCP" onclick="toggleSubmenu('mcp')">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1118,6 +1127,32 @@
                         
                         <!-- Pagination controls -->
                         <div id="vulnerability-pagination" class="pagination-container pagination-fixed"></div>
+                    </div>
+                </div>
+
+                <!-- WebShell Management page -->
+                <div id="page-webshell" class="page">
+                    <div class="page-header">
+                        <h2>WebShell Management</h2>
+                        <div class="page-header-actions">
+                            <button class="btn-primary" onclick="showAddWebshellModal()">Add Connection</button>
+                        </div>
+                    </div>
+                    <div class="page-content webshell-page-content">
+                        <div class="webshell-layout">
+                            <div id="webshell-sidebar" class="webshell-sidebar">
+                                <div class="webshell-sidebar-header">Connections</div>
+                                <div id="webshell-list" class="webshell-list">
+                                    <div class="webshell-empty">No connections yet. Click "Add Connection" to get started.</div>
+                                </div>
+                            </div>
+                            <div id="webshell-resize-handle" class="webshell-resize-handle" title="Drag to resize"></div>
+                            <div class="webshell-main">
+                                <div id="webshell-workspace" class="webshell-workspace">
+                                    <div class="webshell-workspace-placeholder">Select a connection from the left, or add a new WebShell connection.</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2349,6 +2384,12 @@
                     <button class="btn-secondary attack-chain-action-btn" onclick="exportAttackChain('svg')" title="Export as SVG">
                         📥 SVG
                     </button>
+                    <button class="btn-secondary attack-chain-action-btn" onclick="exportAttackChain('json')" title="Export as JSON">
+                        📥 JSON
+                    </button>
+                    <button class="btn-secondary attack-chain-action-btn" onclick="exportAttackChain('pdf')" title="Export as PDF Report">
+                        📄 PDF
+                    </button>
                     <button class="btn-secondary attack-chain-action-btn" onclick="refreshAttackChain()" title="Refresh current attack chain (without regenerating)">
                         ↻ Refresh
                     </button>
@@ -2455,6 +2496,9 @@
     <script src="https://cdn.jsdelivr.net/npm/elkjs@0.9.2/lib/elk.bundled.js"></script>
     <!-- SheetJS for XLSX export (info-collect) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF + AutoTable for attack-chain PDF export -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
     <script>
         // Ensure ELK object is globally available
         if (typeof ELK === 'undefined' && typeof elk !== 'undefined') {
@@ -2807,6 +2851,57 @@ Skill content goes here...</small>
         </div>
     </div>
 
+    <!-- WebShell add/edit connection modal -->
+    <div id="webshell-modal" class="modal">
+        <div class="modal-content" style="max-width: 560px;">
+            <div class="modal-header">
+                <h2 id="webshell-modal-title">Add Connection</h2>
+                <span class="modal-close" onclick="closeWebshellModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="webshell-edit-id" value="" />
+                <div class="form-group">
+                    <label for="webshell-url">Shell URL <span style="color: red;">*</span></label>
+                    <input type="text" id="webshell-url" placeholder="http(s)://target.com/shell.php" />
+                </div>
+                <div class="form-group">
+                    <label for="webshell-password">Connection Password / Key</label>
+                    <input type="text" id="webshell-password" placeholder="e.g. Behinder/AntSword connection password" />
+                </div>
+                <div class="form-group">
+                    <label for="webshell-type">Shell Type</label>
+                    <select id="webshell-type">
+                        <option value="php">PHP</option>
+                        <option value="asp">ASP</option>
+                        <option value="aspx">ASPX</option>
+                        <option value="jsp">JSP</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="webshell-method">Request Method</label>
+                    <select id="webshell-method">
+                        <option value="post">POST</option>
+                        <option value="get">GET</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="webshell-cmd-param">Command Parameter Name</label>
+                    <input type="text" id="webshell-cmd-param" placeholder="Defaults to 'cmd'. E.g. 'xxx' means request: xxx=command" />
+                </div>
+                <div class="form-group">
+                    <label for="webshell-remark">Remark</label>
+                    <input type="text" id="webshell-remark" placeholder="A label to help identify this connection" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="webshell-test-btn" onclick="testWebshellConnection()">Test Connectivity</button>
+                <button class="btn-secondary" onclick="closeWebshellModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveWebshellConnection()">Save</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Vulnerability edit modal -->
     <div id="vulnerability-modal" class="modal">
         <div class="modal-content" style="max-width: 900px;">
@@ -2990,6 +3085,33 @@ Skill content goes here...</small>
         </div>
     </div>
 
+    <!-- In-app toast notification container -->
+    <div id="app-toast-container"></div>
+
+    <!-- In-app confirm dialog (replaces browser window.confirm) -->
+    <div id="app-confirm-overlay" style="display:none;">
+        <div id="app-confirm-dialog">
+            <div id="app-confirm-message"></div>
+            <div id="app-confirm-actions">
+                <button id="app-confirm-cancel">Cancel</button>
+                <button id="app-confirm-ok">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- In-app prompt dialog (replaces browser window.prompt) -->
+    <div id="app-prompt-overlay" style="display:none;">
+        <div id="app-prompt-dialog">
+            <div id="app-prompt-message"></div>
+            <input type="text" id="app-prompt-input" autocomplete="off" spellcheck="false" />
+            <div id="app-prompt-actions">
+                <button id="app-prompt-cancel">Cancel</button>
+                <button id="app-prompt-ok">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/ui-dialogs.js"></script>
     <script src="/static/js/builtin-tools.js"></script>
     <script src="/static/js/auth.js"></script>
     <script src="/static/js/info-collect.js"></script>
@@ -3008,5 +3130,6 @@ Skill content goes here...</small>
     <script src="/static/js/roles.js"></script>
     <script src="/static/js/memory.js"></script>
     <script src="/static/js/filemanager.js"></script>
+    <script src="/static/js/webshell.js"></script>
 </body>
 </html>

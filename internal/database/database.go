@@ -227,6 +227,19 @@ func (db *DB) initTables() error {
 		FOREIGN KEY (queue_id) REFERENCES batch_task_queues(id) ON DELETE CASCADE
 	);`
 
+	// create webshell connections table
+	createWebshellConnectionsTable := `
+	CREATE TABLE IF NOT EXISTS webshell_connections (
+		id TEXT PRIMARY KEY,
+		url TEXT NOT NULL,
+		password TEXT,
+		type TEXT NOT NULL DEFAULT 'php',
+		method TEXT NOT NULL DEFAULT 'post',
+		cmd_param TEXT,
+		remark TEXT,
+		created_at DATETIME NOT NULL
+	);`
+
 	// create indexes
 	createIndexes := `
 	CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
@@ -253,6 +266,8 @@ func (db *DB) initTables() error {
 	CREATE INDEX IF NOT EXISTS idx_batch_tasks_queue_id ON batch_tasks(queue_id);
 	CREATE INDEX IF NOT EXISTS idx_batch_task_queues_created_at ON batch_task_queues(created_at);
 	CREATE INDEX IF NOT EXISTS idx_batch_task_queues_title ON batch_task_queues(title);
+	CREATE INDEX IF NOT EXISTS idx_webshell_connections_created_at ON webshell_connections(created_at);
+	CREATE INDEX IF NOT EXISTS idx_conversations_webshell_connection_id ON conversations(webshell_connection_id);
 	`
 
 	if _, err := db.Exec(createConversationsTable); err != nil {
@@ -311,6 +326,10 @@ func (db *DB) initTables() error {
 		return fmt.Errorf("failed to create batch_tasks table: %w", err)
 	}
 
+	if _, err := db.Exec(createWebshellConnectionsTable); err != nil {
+		return fmt.Errorf("failed to create webshell_connections table: %w", err)
+	}
+
 	// add new columns to existing tables (if they don't exist) - must be done before creating indexes
 	if err := db.migrateConversationsTable(); err != nil {
 		db.logger.Warn("failed to migrate conversations table", zap.Error(err))
@@ -329,6 +348,11 @@ func (db *DB) initTables() error {
 
 	if err := db.migrateBatchTaskQueuesTable(); err != nil {
 		db.logger.Warn("failed to migrate batch_task_queues table", zap.Error(err))
+		// do not return error, allow execution to continue
+	}
+
+	if err := db.migrateConversationsWebshellColumn(); err != nil {
+		db.logger.Warn("failed to migrate conversations webshell_connection_id column", zap.Error(err))
 		// do not return error, allow execution to continue
 	}
 
@@ -488,6 +512,25 @@ func (db *DB) migrateBatchTaskQueuesTable() error {
 		}
 	}
 
+	return nil
+}
+
+// migrateConversationsWebshellColumn adds the webshell_connection_id column to existing conversations tables
+func (db *DB) migrateConversationsWebshellColumn() error {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('conversations') WHERE name='webshell_connection_id'").Scan(&count)
+	if err != nil {
+		if _, addErr := db.Exec("ALTER TABLE conversations ADD COLUMN webshell_connection_id TEXT"); addErr != nil {
+			errMsg := strings.ToLower(addErr.Error())
+			if !strings.Contains(errMsg, "duplicate column") && !strings.Contains(errMsg, "already exists") {
+				db.logger.Warn("failed to add webshell_connection_id column", zap.Error(addErr))
+			}
+		}
+	} else if count == 0 {
+		if _, err := db.Exec("ALTER TABLE conversations ADD COLUMN webshell_connection_id TEXT"); err != nil {
+			db.logger.Warn("failed to add webshell_connection_id column", zap.Error(err))
+		}
+	}
 	return nil
 }
 

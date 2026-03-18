@@ -1,4 +1,4 @@
-﻿const AUTH_STORAGE_KEY = 'cyberstrike-auth';
+const AUTH_STORAGE_KEY = 'cyberstrike-auth';
 let authToken = null;
 let authTokenExpiry = null;
 let authPromise = null;
@@ -19,7 +19,7 @@ function saveAuth(token, expiresAt) {
             expiresAt: expiry.toISOString(),
         }));
     } catch (error) {
-        console.warn('无法持久化认证信息:', error);
+        console.warn('Cannot persist auth info:', error);
     }
 }
 
@@ -29,7 +29,7 @@ function clearAuthStorage() {
     try {
         localStorage.removeItem(AUTH_STORAGE_KEY);
     } catch (error) {
-        console.warn('无法清除认证信息:', error);
+        console.warn('Cannot clear auth info:', error);
     }
 }
 
@@ -53,7 +53,7 @@ function loadAuthFromStorage() {
         authTokenExpiry = expiry;
         return isTokenValid();
     } catch (error) {
-        console.error('读取认证信息失败:', error);
+        console.error('Failed to load auth info:', error);
         clearAuthStorage();
         return false;
     }
@@ -132,7 +132,7 @@ function handleUnauthorized({ message = null, silent = false } = {}) {
         if (typeof window !== 'undefined' && typeof window.t === 'function') {
             finalMessage = window.t('auth.sessionExpired');
         } else {
-            finalMessage = '认证已过期，请重新登录';
+            finalMessage = 'Session expired, please log in again';
         }
     }
     if (!silent) {
@@ -157,7 +157,7 @@ async function apiFetch(url, options = {}) {
         handleUnauthorized();
         const msg = (typeof window !== 'undefined' && typeof window.t === 'function')
             ? window.t('auth.unauthorized')
-            : '未授权访问';
+            : 'Unauthorized access';
         throw new Error(msg);
     }
     return response;
@@ -178,7 +178,7 @@ async function submitLogin(event) {
         if (errorBox) {
             const msgEmpty = (typeof window !== 'undefined' && typeof window.t === 'function')
                 ? window.t('auth.enterPassword')
-                : '请输入密码';
+                : 'Please enter your password';
             errorBox.textContent = msgEmpty;
             errorBox.style.display = 'block';
         }
@@ -202,7 +202,7 @@ async function submitLogin(event) {
             if (errorBox) {
                 const fallback = (typeof window !== 'undefined' && typeof window.t === 'function')
                     ? window.t('auth.loginFailedCheck')
-                    : '登录失败，请检查密码';
+                    : 'Login failed, please check your password';
                 errorBox.textContent = result.error || fallback;
                 errorBox.style.display = 'block';
             }
@@ -218,11 +218,11 @@ async function submitLogin(event) {
             await refreshAppData();
         }
     } catch (error) {
-        console.error('登录失败:', error);
+        console.error('Login failed:', error);
         if (errorBox) {
             const fallback = (typeof window !== 'undefined' && typeof window.t === 'function')
                 ? window.t('auth.loginFailedRetry')
-                : '登录失败，请稍后重试';
+                : 'Login failed, please try again later';
             errorBox.textContent = fallback;
             errorBox.style.display = 'block';
         }
@@ -242,13 +242,14 @@ async function refreshAppData(showTaskErrors = false) {
 
 async function bootstrapApp() {
     if (!isAppInitialized) {
-        // 等待 i18n 首包加载完成后再插系统就绪消息，避免清除缓存后语言显示 English 气泡仍是中文
+        // Wait for i18n first-bundle load before inserting system-ready message,
+        // to avoid English-language pages still showing Chinese bubbles after cache clear
         try {
             if (window.i18nReady && typeof window.i18nReady.then === 'function') {
                 await window.i18nReady;
             }
         } catch (e) {
-            console.warn('等待 i18n 就绪失败，继续初始化聊天', e);
+            console.warn('Waiting for i18n ready failed, continuing chat init', e);
         }
         initializeChatUI();
         isAppInitialized = true;
@@ -256,10 +257,10 @@ async function bootstrapApp() {
     await refreshAppData();
 }
 
-// 通用工具函数
+// General utility functions
 function getStatusText(status) {
     if (typeof window.t !== 'function') {
-        const fallback = { pending: '等待中', running: '执行中', completed: '已完成', failed: '失败' };
+        const fallback = { pending: 'Pending', running: 'Running', completed: 'Completed', failed: 'Failed' };
         return fallback[status] || status;
     }
     const keyMap = { pending: 'mcpDetailModal.statusPending', running: 'mcpDetailModal.statusRunning', completed: 'mcpDetailModal.statusCompleted', failed: 'mcpDetailModal.statusFailed' };
@@ -271,13 +272,13 @@ function formatDuration(ms) {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    
+
     if (hours > 0) {
-        return `${hours}小时${minutes % 60}分钟`;
+        return `${hours}h ${minutes % 60}m`;
     } else if (minutes > 0) {
-        return `${minutes}分钟${seconds % 60}秒`;
+        return `${minutes}m ${seconds % 60}s`;
     } else {
-        return `${seconds}秒`;
+        return `${seconds}s`;
     }
 }
 
@@ -293,7 +294,7 @@ function formatMarkdown(text) {
         ALLOWED_ATTR: ['href', 'title', 'alt', 'src', 'class'],
         ALLOW_DATA_ATTR: false,
     };
-    
+
     if (typeof DOMPurify !== 'undefined') {
         if (typeof marked !== 'undefined' && !/<[a-z][\s\S]*>/i.test(text)) {
             try {
@@ -304,7 +305,7 @@ function formatMarkdown(text) {
                 let parsedContent = marked.parse(text);
                 return DOMPurify.sanitize(parsedContent, sanitizeConfig);
             } catch (e) {
-                console.error('Markdown 解析失败:', e);
+                console.error('Markdown parse failed:', e);
                 return DOMPurify.sanitize(text, sanitizeConfig);
             }
         } else {
@@ -318,7 +319,7 @@ function formatMarkdown(text) {
             });
             return marked.parse(text);
         } catch (e) {
-            console.error('Markdown 解析失败:', e);
+            console.error('Markdown parse failed:', e);
             return escapeHtml(text).replace(/\n/g, '<br>');
         }
     } else {
@@ -348,7 +349,7 @@ async function initializeApp() {
                 return;
             }
         } catch (error) {
-            console.warn('本地会话已失效，需重新登录');
+            console.warn('Local session expired, re-login required');
         }
     }
 
@@ -356,37 +357,37 @@ async function initializeApp() {
     showLoginOverlay();
 }
 
-// 用户菜单控制
+// User menu controls
 function toggleUserMenu() {
     const dropdown = document.getElementById('user-menu-dropdown');
     if (!dropdown) return;
-    
+
     const isVisible = dropdown.style.display !== 'none';
     dropdown.style.display = isVisible ? 'none' : 'block';
 }
 
-// 点击页面其他地方时关闭下拉菜单
+// Close dropdown when clicking elsewhere on the page
 document.addEventListener('click', function(event) {
     const dropdown = document.getElementById('user-menu-dropdown');
     const avatarBtn = document.querySelector('.user-avatar-btn');
-    
-    if (dropdown && avatarBtn && 
-        !dropdown.contains(event.target) && 
+
+    if (dropdown && avatarBtn &&
+        !dropdown.contains(event.target) &&
         !avatarBtn.contains(event.target)) {
         dropdown.style.display = 'none';
     }
 });
 
-// 退出登录
+// Logout
 async function logout() {
-    // 关闭下拉菜单
+    // Close dropdown
     const dropdown = document.getElementById('user-menu-dropdown');
     if (dropdown) {
         dropdown.style.display = 'none';
     }
-    
+
     try {
-        // 先尝试调用退出API（如果token有效）
+        // Try calling the logout API first (if token is valid)
         if (authToken) {
             const headers = new Headers();
             headers.set('Authorization', `Bearer ${authToken}`);
@@ -394,20 +395,20 @@ async function logout() {
                 method: 'POST',
                 headers: headers,
             }).catch(() => {
-                // 忽略错误，继续清除本地认证信息
+                // Ignore error, continue clearing local auth info
             });
         }
     } catch (error) {
-        console.error('退出登录API调用失败:', error);
+        console.error('Logout API call failed:', error);
     } finally {
-        // 无论如何都清除本地认证信息
+        // Always clear local auth info regardless
         clearAuthStorage();
         hideLoginOverlay();
-        showLoginOverlay(typeof window.t === 'function' ? window.t('auth.loggedOut') : '已退出登录');
+        showLoginOverlay(typeof window.t === 'function' ? window.t('auth.loggedOut') : 'Logged out');
     }
 }
 
-// 导出函数供HTML使用
+// Export functions for HTML use
 window.toggleUserMenu = toggleUserMenu;
 window.logout = logout;
 

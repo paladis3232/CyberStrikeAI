@@ -16,6 +16,7 @@ apt-get update -y
 apt-get install -y --no-install-recommends \
   ca-certificates curl wget git unzip xz-utils jq \
   build-essential make cmake gcc g++ perl \
+  pkg-config libssl-dev libacl1-dev libcap-dev \
   php-cli php-zip \
   python3 python3-pip python3-venv python3-dev \
   ruby-full ruby-dev \
@@ -79,6 +80,17 @@ for pkg in "${optional_pkgs[@]}"; do
   fi
 done
 
+# radare2 is not in Debian bookworm apt — install from source via git clone
+if ! command -v radare2 >/dev/null 2>&1; then
+  echo "[*] Installing radare2 from git source..."
+  if git clone --depth=1 https://github.com/radareorg/radare2.git /tmp/radare2; then
+    /tmp/radare2/sys/install.sh && echo "[OK] radare2 installed" || echo "[WARN] radare2 sys/install.sh failed, skipping"
+    rm -rf /tmp/radare2
+  else
+    echo "[WARN] radare2 git clone failed, skipping"
+  fi
+fi
+
 mkdir -p "$TOOLS_HOME" /usr/share/wordlists/dirb /usr/share/wordlists/api /usr/share/wordlists
 
 if [[ -f /usr/share/dirb/wordlists/common.txt ]]; then
@@ -99,8 +111,11 @@ python3 -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --upgrade pip
 "$VENV_DIR/bin/pip" install -r "$ROOT_DIR/requirements.txt" || true
 "$VENV_DIR/bin/pip" install \
-  checkov kube-hunter volatility3 ropper ROPGadget fierce xsser ScoutSuite \
+  checkov kube-hunter volatility3 ropper ROPGadget fierce ScoutSuite \
   requests_ntlm six python-dateutil || true
+# xsser is not published on PyPI — install from source
+"$VENV_DIR/bin/pip" install git+https://github.com/epsylon/xsser.git || \
+  echo "[WARN] xsser git install failed, skipping"
 
 for c in arjun uro checkov fierce xsser; do
   if [[ -x "$VENV_DIR/bin/$c" ]]; then

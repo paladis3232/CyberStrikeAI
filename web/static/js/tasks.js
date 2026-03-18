@@ -462,12 +462,12 @@ function renderTaskItem(task, statusMap, isHistory = false) {
 
 // Clear task history
 function clearTasksHistory() {
-    if (!confirm('Are you sure you want to clear all task history?')) {
-        return;
-    }
-    tasksState.completedTasksHistory = [];
-    saveCompletedTasksHistory();
-    filterAndSortTasks();
+    appConfirm('Are you sure you want to clear all task history?', function() {
+        tasksState.completedTasksHistory = [];
+        saveCompletedTasksHistory();
+        filterAndSortTasks();
+    });
+    return;
 }
 
 // Toggle task selection
@@ -509,46 +509,45 @@ async function batchCancelTasks() {
     const selected = Array.from(tasksState.selectedTasks);
     if (selected.length === 0) return;
     
-    if (!confirm(`Are you sure you want to cancel ${selected.length} task(s)?`)) {
-        return;
-    }
-    
-    let successCount = 0;
-    let failCount = 0;
-    
-    for (const conversationId of selected) {
-        try {
-            const response = await apiFetch('/api/agent-loop/cancel', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ conversationId }),
-            });
-            
-            if (response.ok) {
-                successCount++;
-            } else {
+    appConfirm(`Are you sure you want to cancel ${selected.length} task(s)?`, async function() {
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const conversationId of selected) {
+            try {
+                const response = await apiFetch('/api/agent-loop/cancel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ conversationId }),
+                });
+
+                if (response.ok) {
+                    successCount++;
+                } else {
+                    failCount++;
+                }
+            } catch (error) {
+                console.error('Failed to cancel task:', conversationId, error);
                 failCount++;
             }
-        } catch (error) {
-            console.error('Failed to cancel task:', conversationId, error);
-            failCount++;
         }
-    }
-    
-    // Clear selection
-    clearTaskSelection();
-    
-    // Refresh task list
-    await loadTasks();
-    
-    // Show result
-    if (failCount > 0) {
-        alert(`Batch cancel completed: ${successCount} succeeded, ${failCount} failed`);
-    } else {
-        alert(`Successfully cancelled ${successCount} task(s)`);
-    }
+
+        // Clear selection
+        clearTaskSelection();
+
+        // Refresh task list
+        await loadTasks();
+
+        // Show result
+        if (failCount > 0) {
+            alert(`Batch cancel completed: ${successCount} succeeded, ${failCount} failed`);
+        } else {
+            alert(`Successfully cancelled ${successCount} task(s)`);
+        }
+    });
+    return;
 }
 
 // Copy task ID
@@ -1376,27 +1375,26 @@ async function pauseBatchQueue() {
     const queueId = batchQueuesState.currentQueueId;
     if (!queueId) return;
     
-    if (!confirm('Are you sure you want to pause this batch task queue? The currently running task will be stopped, and subsequent tasks will remain in pending status.')) {
-        return;
-    }
-    
-    try {
-        const response = await apiFetch(`/api/batch-tasks/${queueId}/pause`, {
-            method: 'POST',
-        });
-        
-        if (!response.ok) {
-            const result = await response.json().catch(() => ({}));
-            throw new Error(result.error || 'Failed to pause batch task');
+    appConfirm('Are you sure you want to pause this batch task queue? The currently running task will be stopped, and subsequent tasks will remain in pending status.', async function() {
+        try {
+            const response = await apiFetch(`/api/batch-tasks/${queueId}/pause`, {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({}));
+                throw new Error(result.error || 'Failed to pause batch task');
+            }
+
+            // Refresh details
+            showBatchQueueDetail(queueId);
+            refreshBatchQueues();
+        } catch (error) {
+            console.error('Failed to pause batch task:', error);
+            alert('Failed to pause batch task: ' + error.message);
         }
-        
-        // Refresh details
-        showBatchQueueDetail(queueId);
-        refreshBatchQueues();
-    } catch (error) {
-        console.error('Failed to pause batch task:', error);
-        alert('Failed to pause batch task: ' + error.message);
-    }
+    });
+    return;
 }
 
 // Delete batch task queue (from details modal)
@@ -1404,57 +1402,55 @@ async function deleteBatchQueue() {
     const queueId = batchQueuesState.currentQueueId;
     if (!queueId) return;
     
-    if (!confirm('Are you sure you want to delete this batch task queue? This action cannot be undone.')) {
-        return;
-    }
-    
-    try {
-        const response = await apiFetch(`/api/batch-tasks/${queueId}`, {
-            method: 'DELETE',
-        });
-        
-        if (!response.ok) {
-            const result = await response.json().catch(() => ({}));
-            throw new Error(result.error || 'Failed to delete batch task queue');
+    appConfirm('Are you sure you want to delete this batch task queue? This action cannot be undone.', async function() {
+        try {
+            const response = await apiFetch(`/api/batch-tasks/${queueId}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({}));
+                throw new Error(result.error || 'Failed to delete batch task queue');
+            }
+
+            closeBatchQueueDetailModal();
+            refreshBatchQueues();
+        } catch (error) {
+            console.error('Failed to delete batch task queue:', error);
+            alert('Failed to delete batch task queue: ' + error.message);
         }
-        
-        closeBatchQueueDetailModal();
-        refreshBatchQueues();
-    } catch (error) {
-        console.error('Failed to delete batch task queue:', error);
-        alert('Failed to delete batch task queue: ' + error.message);
-    }
+    });
+    return;
 }
 
 // Delete batch task queue from list
 async function deleteBatchQueueFromList(queueId) {
     if (!queueId) return;
-    
-    if (!confirm('Are you sure you want to delete this batch task queue? This action cannot be undone.')) {
-        return;
-    }
-    
-    try {
-        const response = await apiFetch(`/api/batch-tasks/${queueId}`, {
-            method: 'DELETE',
-        });
-        
-        if (!response.ok) {
-            const result = await response.json().catch(() => ({}));
-            throw new Error(result.error || 'Failed to delete batch task queue');
+
+    appConfirm('Are you sure you want to delete this batch task queue? This action cannot be undone.', async function() {
+        try {
+            const response = await apiFetch(`/api/batch-tasks/${queueId}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({}));
+                throw new Error(result.error || 'Failed to delete batch task queue');
+            }
+
+            // If currently viewing this queue's details, close the details modal
+            if (batchQueuesState.currentQueueId === queueId) {
+                closeBatchQueueDetailModal();
+            }
+
+            // Refresh queue list
+            refreshBatchQueues();
+        } catch (error) {
+            console.error('Failed to delete batch task queue:', error);
+            alert('Failed to delete batch task queue: ' + error.message);
         }
-        
-        // If currently viewing this queue's details, close the details modal
-        if (batchQueuesState.currentQueueId === queueId) {
-            closeBatchQueueDetailModal();
-        }
-        
-        // Refresh queue list
-        refreshBatchQueues();
-    } catch (error) {
-        console.error('Failed to delete batch task queue:', error);
-        alert('Failed to delete batch task queue: ' + error.message);
-    }
+    });
+    return;
 }
 
 // Close batch task queue details modal
@@ -1779,11 +1775,10 @@ function deleteBatchTaskFromElement(button) {
         ? decodedMessage.substring(0, 50) + '...' 
         : decodedMessage;
     
-    if (!confirm(`Are you sure you want to delete this task?\n\nTask content: ${displayMessage}\n\nThis action cannot be undone.`)) {
-        return;
-    }
-    
-    deleteBatchTask(queueId, taskId);
+    appConfirm(`Are you sure you want to delete this task?\n\nTask content: ${displayMessage}\n\nThis action cannot be undone.`, function() {
+        deleteBatchTask(queueId, taskId);
+    });
+    return;
 }
 
 // Delete batch task

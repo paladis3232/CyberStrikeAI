@@ -524,38 +524,37 @@ async function deleteSkill(skillName) {
         confirmMessage = `Are you sure you want to delete skill "${skillName}"?\n\n⚠️ This skill is currently bound to the following ${boundRoles.length} role(s):\n${rolesList}\n\nAfter deletion, the system will automatically remove this skill's binding from these roles.\n\nThis action cannot be undone. Continue?`;
     }
 
-    if (!confirm(confirmMessage)) {
-        return;
-    }
+    appConfirm(confirmMessage, async function() {
+        try {
+            const response = await apiFetch(`/api/skills/${encodeURIComponent(skillName)}`, {
+                method: 'DELETE'
+            });
 
-    try {
-        const response = await apiFetch(`/api/skills/${encodeURIComponent(skillName)}`, {
-            method: 'DELETE'
-        });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete skill');
+            }
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to delete skill');
+            const data = await response.json();
+            let successMessage = 'Skill deleted';
+            if (data.affected_roles && data.affected_roles.length > 0) {
+                const rolesList = data.affected_roles.join(', ');
+                successMessage = `Skill deleted, automatically removed binding from ${data.affected_roles.length} role(s): ${rolesList}`;
+            }
+            showNotification(successMessage, 'success');
+
+            // If current page has no data, go back to previous page
+            const currentPage = skillsPagination.currentPage;
+            const totalAfterDelete = skillsPagination.total - 1;
+            const totalPages = Math.ceil(totalAfterDelete / skillsPagination.pageSize);
+            const pageToLoad = currentPage > totalPages && totalPages > 0 ? totalPages : currentPage;
+            await loadSkills(pageToLoad, skillsPagination.pageSize);
+        } catch (error) {
+            console.error('Failed to delete skill:', error);
+            showNotification('Failed to delete skill: ' + error.message, 'error');
         }
-
-        const data = await response.json();
-        let successMessage = 'Skill deleted';
-        if (data.affected_roles && data.affected_roles.length > 0) {
-            const rolesList = data.affected_roles.join(', ');
-            successMessage = `Skill deleted, automatically removed binding from ${data.affected_roles.length} role(s): ${rolesList}`;
-        }
-        showNotification(successMessage, 'success');
-
-        // If current page has no data, go back to previous page
-        const currentPage = skillsPagination.currentPage;
-        const totalAfterDelete = skillsPagination.total - 1;
-        const totalPages = Math.ceil(totalAfterDelete / skillsPagination.pageSize);
-        const pageToLoad = currentPage > totalPages && totalPages > 0 ? totalPages : currentPage;
-        await loadSkills(pageToLoad, skillsPagination.pageSize);
-    } catch (error) {
-        console.error('Failed to delete skill:', error);
-        showNotification('Failed to delete skill: ' + error.message, 'error');
-    }
+    });
+    return;
 }
 
 // ==================== Skills Status Monitoring Functions ====================
@@ -692,27 +691,26 @@ async function refreshSkillsMonitor() {
 
 // Clear skills stats data
 async function clearSkillsStats() {
-    if (!confirm('Are you sure you want to clear all skills stats? This action cannot be undone.')) {
-        return;
-    }
+    appConfirm('Are you sure you want to clear all skills stats? This action cannot be undone.', async function() {
+        try {
+            const response = await apiFetch('/api/skills/stats', {
+                method: 'DELETE'
+            });
 
-    try {
-        const response = await apiFetch('/api/skills/stats', {
-            method: 'DELETE'
-        });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to clear stats');
+            }
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to clear stats');
+            showNotification('All skills stats cleared', 'success');
+            // Reload stats data
+            await loadSkillsMonitor();
+        } catch (error) {
+            console.error('Failed to clear stats:', error);
+            showNotification('Failed to clear stats: ' + error.message, 'error');
         }
-
-        showNotification('All skills stats cleared', 'success');
-        // Reload stats data
-        await loadSkillsMonitor();
-    } catch (error) {
-        console.error('Failed to clear stats:', error);
-        showNotification('Failed to clear stats: ' + error.message, 'error');
-    }
+    });
+    return;
 }
 
 // HTML escape function

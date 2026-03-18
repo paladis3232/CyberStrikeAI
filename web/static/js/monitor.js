@@ -1567,32 +1567,31 @@ async function deleteExecution(executionId) {
     }
     
     const deleteConfirmMsg = typeof window.t === 'function' ? window.t('mcpMonitor.deleteExecConfirmSingle') : 'Are you sure you want to delete this execution record? This action cannot be undone.';
-    if (!confirm(deleteConfirmMsg)) {
-        return;
-    }
-    
-    try {
-        const response = await apiFetch(`/api/monitor/execution/${executionId}`, {
-            method: 'DELETE'
-        });
-        
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            const deleteFailedMsg = typeof window.t === 'function' ? window.t('mcpMonitor.deleteExecFailed') : 'Failed to delete execution record';
-            throw new Error(error.error || deleteFailedMsg);
-        }
-        
-        // Refresh current page after successful deletion
-        const currentPage = monitorState.pagination.page;
-        await refreshMonitorPanel(currentPage);
+    appConfirm(deleteConfirmMsg, async function() {
+        try {
+            const response = await apiFetch(`/api/monitor/execution/${executionId}`, {
+                method: 'DELETE'
+            });
 
-        const execDeletedMsg = typeof window.t === 'function' ? window.t('mcpMonitor.execDeleted') : 'Execution record deleted';
-        alert(execDeletedMsg);
-    } catch (error) {
-        console.error('Failed to delete execution record:', error);
-        const deleteFailedMsg = typeof window.t === 'function' ? window.t('mcpMonitor.deleteExecFailed') : 'Failed to delete execution record';
-        alert(deleteFailedMsg + ': ' + error.message);
-    }
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                const deleteFailedMsg = typeof window.t === 'function' ? window.t('mcpMonitor.deleteExecFailed') : 'Failed to delete execution record';
+                throw new Error(error.error || deleteFailedMsg);
+            }
+
+            // Refresh current page after successful deletion
+            const currentPage = monitorState.pagination.page;
+            await refreshMonitorPanel(currentPage);
+
+            const execDeletedMsg = typeof window.t === 'function' ? window.t('mcpMonitor.execDeleted') : 'Execution record deleted';
+            alert(execDeletedMsg);
+        } catch (error) {
+            console.error('Failed to delete execution record:', error);
+            const deleteFailedMsg = typeof window.t === 'function' ? window.t('mcpMonitor.deleteExecFailed') : 'Failed to delete execution record';
+            alert(deleteFailedMsg + ': ' + error.message);
+        }
+    });
+    return;
 }
 
 // Update batch action state
@@ -1674,39 +1673,38 @@ async function batchDeleteExecutions() {
     const ids = Array.from(checkboxes).map(cb => cb.value);
     const count = ids.length;
     const batchConfirmMsg = typeof window.t === 'function' ? window.t('mcpMonitor.batchDeleteConfirm', { count: count }) : `Are you sure you want to delete ${count} selected execution record(s)? This action cannot be undone.`;
-    if (!confirm(batchConfirmMsg)) {
-        return;
-    }
-    
-    try {
-        const response = await apiFetch('/api/monitor/executions', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ ids: ids })
-        });
-        
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            const batchFailedMsg = typeof window.t === 'function' ? window.t('mcp.batchDeleteFailed') : 'Failed to batch delete execution records';
-            throw new Error(error.error || batchFailedMsg);
-        }
-        
-        const result = await response.json().catch(() => ({}));
-        const deletedCount = result.deleted || count;
-        
-        // Refresh current page after successful deletion
-        const currentPage = monitorState.pagination.page;
-        await refreshMonitorPanel(currentPage);
+    appConfirm(batchConfirmMsg, async function() {
+        try {
+            const response = await apiFetch('/api/monitor/executions', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ids: ids })
+            });
 
-        const batchSuccessMsg = typeof window.t === 'function' ? window.t('mcpMonitor.batchDeleteSuccess', { count: deletedCount }) : `Successfully deleted ${deletedCount} execution record(s)`;
-        alert(batchSuccessMsg);
-    } catch (error) {
-        console.error('Failed to batch delete execution records:', error);
-        const batchFailedMsg = typeof window.t === 'function' ? window.t('mcp.batchDeleteFailed') : 'Failed to batch delete execution records';
-        alert(batchFailedMsg + ': ' + error.message);
-    }
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                const batchFailedMsg = typeof window.t === 'function' ? window.t('mcp.batchDeleteFailed') : 'Failed to batch delete execution records';
+                throw new Error(error.error || batchFailedMsg);
+            }
+
+            const result = await response.json().catch(() => ({}));
+            const deletedCount = result.deleted || count;
+
+            // Refresh current page after successful deletion
+            const currentPage = monitorState.pagination.page;
+            await refreshMonitorPanel(currentPage);
+
+            const batchSuccessMsg = typeof window.t === 'function' ? window.t('mcpMonitor.batchDeleteSuccess', { count: deletedCount }) : `Successfully deleted ${deletedCount} execution record(s)`;
+            alert(batchSuccessMsg);
+        } catch (error) {
+            console.error('Failed to batch delete execution records:', error);
+            const batchFailedMsg = typeof window.t === 'function' ? window.t('mcp.batchDeleteFailed') : 'Failed to batch delete execution records';
+            alert(batchFailedMsg + ': ' + error.message);
+        }
+    });
+    return;
 }
 
 function formatExecutionDuration(start, end) {

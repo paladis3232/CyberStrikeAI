@@ -820,23 +820,21 @@ async function refreshKnowledgeBase() {
 
 // Rebuild index
 async function rebuildKnowledgeIndex() {
-    try {
-        if (!confirm('Are you sure you want to rebuild the index? This may take some time.')) {
-            return;
-        }
-        showNotification('Rebuilding index...', 'info');
-        
-        // Stop existing polling first
-        if (indexProgressInterval) {
-            clearInterval(indexProgressInterval);
-            indexProgressInterval = null;
-        }
-        
-        // Immediately show "Rebuilding" status, as rebuilding clears the old index
-        const progressContainer = document.getElementById('knowledge-index-progress');
-        if (progressContainer) {
-            progressContainer.style.display = 'block';
-            progressContainer.innerHTML = `
+    appConfirm('Are you sure you want to rebuild the index? This may take some time.', async function() {
+        try {
+            showNotification('Rebuilding index...', 'info');
+
+            // Stop existing polling first
+            if (indexProgressInterval) {
+                clearInterval(indexProgressInterval);
+                indexProgressInterval = null;
+            }
+
+            // Immediately show "Rebuilding" status, as rebuilding clears the old index
+            const progressContainer = document.getElementById('knowledge-index-progress');
+            if (progressContainer) {
+                progressContainer.style.display = 'block';
+                progressContainer.innerHTML = `
                 <div class="knowledge-index-progress">
                     <div class="progress-header">
                         <span class="progress-icon">🔨</span>
@@ -848,30 +846,32 @@ async function rebuildKnowledgeIndex() {
                     <div class="progress-hint">Once the index is built, semantic search will be available</div>
                 </div>
             `;
+            }
+
+            const response = await apiFetch('/api/knowledge/index', {
+                method: 'POST'
+            });
+            if (!response.ok) {
+                throw new Error('Failed to rebuild index');
+            }
+            showNotification('Index rebuild started and will run in the background', 'success');
+
+            // Wait a moment to ensure backend has started processing and cleared old index
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Immediately update progress once
+            updateIndexProgress();
+
+            // Start polling progress (every 2 seconds, more frequent than default 3 seconds)
+            if (!indexProgressInterval) {
+                indexProgressInterval = setInterval(updateIndexProgress, 2000);
+            }
+        } catch (error) {
+            console.error('Failed to rebuild index:', error);
+            showNotification('Failed to rebuild index: ' + error.message, 'error');
         }
-        
-        const response = await apiFetch('/api/knowledge/index', {
-            method: 'POST'
-        });
-        if (!response.ok) {
-            throw new Error('Failed to rebuild index');
-        }
-        showNotification('Index rebuild started and will run in the background', 'success');
-        
-        // Wait a moment to ensure backend has started processing and cleared old index
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Immediately update progress once
-        updateIndexProgress();
-        
-        // Start polling progress (every 2 seconds, more frequent than default 3 seconds)
-        if (!indexProgressInterval) {
-            indexProgressInterval = setInterval(updateIndexProgress, 2000);
-        }
-    } catch (error) {
-        console.error('Failed to rebuild index:', error);
-        showNotification('Failed to rebuild index: ' + error.message, 'error');
-    }
+    });
+    return;
 }
 
 // Show Add Knowledge Item modal
@@ -1066,10 +1066,13 @@ async function saveKnowledgeItem() {
 
 // Delete knowledge item
 async function deleteKnowledgeItem(id) {
-    if (!confirm('Are you sure you want to delete this knowledge item?')) {
-        return;
-    }
-    
+    appConfirm('Are you sure you want to delete this knowledge item?', async function() {
+        await _doDeleteKnowledgeItem(id);
+    });
+    return;
+}
+
+async function _doDeleteKnowledgeItem(id) {
     // Find the knowledge item card and delete button
     const itemCard = document.querySelector(`.knowledge-item-card[data-id="${id}"]`);
     const deleteButton = itemCard ? itemCard.querySelector('.knowledge-item-delete-btn') : null;
@@ -1549,10 +1552,13 @@ function refreshRetrievalLogs() {
 
 // Delete retrieval log
 async function deleteRetrievalLog(id, index) {
-    if (!confirm('Are you sure you want to delete this retrieval record?')) {
-        return;
-    }
-    
+    appConfirm('Are you sure you want to delete this retrieval record?', async function() {
+        await _doDeleteRetrievalLog(id, index);
+    });
+    return;
+}
+
+async function _doDeleteRetrievalLog(id, index) {
     // Find the log card and delete button
     const logCard = document.querySelector(`.retrieval-log-card[data-index="${index}"]`);
     const deleteButton = logCard ? logCard.querySelector('.retrieval-log-delete-btn') : null;

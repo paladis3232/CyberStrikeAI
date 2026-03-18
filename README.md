@@ -73,7 +73,7 @@ CyberStrikeAI is an **AI-native security testing platform** built in Go. It inte
 - 🔌 Native MCP implementation with HTTP/stdio/SSE transports and external MCP federation
 - 🧰 140+ prebuilt tool recipes + YAML-based extension system
 - 📄 Large-result pagination, compression, and searchable archives
-- 🔗 Attack-chain graph, risk scoring, and step-by-step replay
+- 🔗 Attack-chain graph, risk scoring, step-by-step replay, and **JSON / PDF export**
 - 🔒 Password-protected web UI, audit logs, and SQLite persistence
 - 📚 Knowledge base with vector search and **corpus-level BM25 hybrid retrieval** for security expertise
 - 🧠 **Persistent memory**: key-value store that survives conversation compression and server restarts — agents remember credentials, targets, findings, and plans across sessions; tool results are automatically stored as memory entries
@@ -86,8 +86,9 @@ CyberStrikeAI is an **AI-native security testing platform** built in Go. It inte
 - 🎯 Skills system: 24 predefined security testing skills (SQL injection, XSS, CSRF, SSRF, XXE, Command Injection, File Upload, IDOR, Deserialization, API security, Android reverse engineering, container security, cloud security, network pentest, mobile app security, LDAP/XPath injection, incident response, secure code review, and more) that can be attached to roles or called on-demand by AI agents
 - 🐳 **Docker lifecycle management**: deploy, update, start, stop, restart, and monitor the Docker stack directly from the System Settings UI or via REST API
 - 📱 **Chatbot**: Telegram and Lark long-lived connections so you can talk to CyberStrikeAI from mobile (see [Robot / Chatbot guide](docs/robot_en.md) for setup and commands)
-- 🌙 **Dark / light theme toggle**: switch between dark and light UI themes from the header; preference is saved across sessions
+- 🌙 **Dark / light theme toggle**: fully unified dark mode across all pages (dashboard, API docs, group view, memory, etc.); preference is saved across sessions
 - 🐚 **WebShell Management**: built-in webshell manager — add PHP/ASP/ASPX/JSP connections, execute commands via xterm.js virtual terminal, browse and manage remote files, and get AI-assisted post-exploitation guidance in a dedicated tab
+- 💬 **In-app dialog system**: toast notifications, styled confirm dialogs, and prompt modals replace native browser alerts — all theme-aware and non-blocking
 
 ## Tool Overview
 
@@ -238,6 +239,9 @@ go build -o cyberstrike-ai cmd/server/main.go
 ### Attack-Chain Intelligence
 - AI parses each conversation to assemble targets, tools, vulnerabilities, and relationships.
 - The web UI renders the chain as an interactive graph with severity scoring and step replay.
+- **Export the attack chain** in multiple formats:
+  - **JSON** – full node/edge graph with metadata, downloadable as `.json`
+  - **PDF** – formatted A4 report with summary table and node details, generated client-side via jsPDF
 - Export the chain or raw findings to external reporting pipelines.
 
 ### MCP Everywhere
@@ -250,7 +254,7 @@ go build -o cyberstrike-ai cmd/server/main.go
    ```bash
    go build -o cyberstrike-ai-mcp cmd/mcp-stdio/main.go
    ```
-2. **Wire it up in Cursor**  
+2. **Wire it up in Cursor**
    Open `Settings → Tools & MCP → Add Custom MCP`, pick **Command**, then point to the compiled binary and your config:
    ```json
    {
@@ -514,6 +518,16 @@ Before every major new action the agent now performs a mandatory introspection p
 
 The introspection context is injected into the system prompt as a `<memory_similarity_context>` block before each agent turn, ensuring the agent never starts a scan it already completed.
 
+### In-App Dialog System
+
+All browser-native dialogs (`alert`, `confirm`, `prompt`) have been replaced with a fully themed in-app dialog system (`ui-dialogs.js`):
+
+- **Toast notifications** – non-blocking slide-in messages (success, error, warning, info) that auto-dismiss after ~4 seconds.
+- **Confirm dialogs** – styled modal with ✅ Confirm / ❌ Cancel buttons; supports async callback-based flow without blocking the event loop.
+- **Prompt dialogs** – styled input modal for one-line user input; keyboard-friendly (Enter to confirm, Escape to cancel).
+
+All dialogs automatically adapt to dark/light theme and are accessible by keyboard.
+
 ### Automation Hooks
 - **REST APIs** – everything the UI uses (auth, conversations, tool runs, monitor, vulnerabilities, roles) is available over JSON.
 - **Role APIs** – manage security testing roles via `/api/roles` endpoints: `GET /api/roles` (list all roles), `GET /api/roles/:name` (get role), `POST /api/roles` (create role), `PUT /api/roles/:name` (update role), `DELETE /api/roles/:name` (delete role). Roles are stored as YAML files in the `roles/` directory and support hot-reload.
@@ -654,7 +668,9 @@ CyberStrikeAI/
 ├── cmd/                 # Server, MCP stdio, and test entrypoints
 ├── internal/            # Agent engine, MCP core, handlers, security executor
 ├── web/                 # Single-page application (templates + static assets)
-├── tools/               # YAML tool recipes (100+ provided)
+│   ├── static/js/       # Frontend JS modules (chat, webshell, ui-dialogs, i18n, …)
+│   └── templates/       # HTML templates (index.html, api-docs.html)
+├── tools/               # YAML tool recipes (140+ provided)
 ├── roles/               # Role configurations (13 predefined security testing roles)
 ├── skills/              # Skills library (24 predefined security testing skills)
 ├── knowledge_base/      # Markdown files for the vector knowledge base
@@ -686,6 +702,7 @@ Load the recon-engagement template, run amass/subfinder, then brute-force dirs o
 Use external Burp-based MCP server for authenticated traffic replay, then pass findings back for graphing.
 Compress the 5 MB nuclei report, summarize critical CVEs, and attach the artifact to the conversation.
 Build an attack chain for the latest engagement and export the node list with severity >= high.
+Export the attack chain as a PDF report and share it with the client.
 ```
 
 ## ⚠️ Disclaimer
